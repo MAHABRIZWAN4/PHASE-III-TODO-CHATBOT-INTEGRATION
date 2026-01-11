@@ -18,20 +18,20 @@ function getTokenFromCookie(request: NextRequest): string | null {
   return cookie?.value || null;
 }
 
-export function middleware(request: NextRequest) {
+export default function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = getTokenFromCookie(request);
 
   // Check if the current route is protected
   const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
-  const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route));
+  const isPublicRoute = publicRoutes.includes(pathname);
 
   // Redirect to login if accessing protected route without token
   if (isProtectedRoute && !token) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Redirect to dashboard if accessing public routes with valid token
+  // Redirect to dashboard if accessing public routes with valid token (but not root)
   if (isPublicRoute && token && pathname !== "/") {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
