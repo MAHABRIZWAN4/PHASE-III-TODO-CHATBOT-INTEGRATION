@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 // Define protected routes
-const protectedRoutes = ["/dashboard"];
+const protectedRoutes = ["/dashboard", "/chat"];
 
 // Define public routes
 const publicRoutes = ["/login", "/signup", "/"];
@@ -18,7 +18,7 @@ function getTokenFromCookie(request: NextRequest): string | null {
   return cookie?.value || null;
 }
 
-export default function proxy(request: NextRequest) {
+export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = getTokenFromCookie(request);
 

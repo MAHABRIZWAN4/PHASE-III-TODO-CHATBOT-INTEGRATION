@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "task-management": {
+      "command": "python",
+      "args": ["-m", "backend.mcp_server.task_tools"],
+      "env": {
+        "DATABASE_URL": "${DATABASE_URL}"
+      }
+    }
+  }
+}

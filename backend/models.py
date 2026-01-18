@@ -32,6 +32,8 @@ class Task(SQLModel, table=True):
     title: str = Field(max_length=200, nullable=False)
     description: Optional[str] = Field(default=None, sa_column=Column(Text))
     completed: bool = Field(default=False, sa_column=Column(Boolean, default=False))
+    due_date: Optional[datetime] = Field(default=None, sa_column=Column(DateTime, nullable=True))
+    completed_at: Optional[datetime] = Field(default=None, sa_column=Column(DateTime, nullable=True))
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 

@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from db import init_db
 from routes.auth import router as auth_router
 from routes.tasks import router as tasks_router
+from routes.chat import router as chat_router
 
 app = FastAPI(
     title="Todo API",
@@ -31,6 +32,7 @@ async def on_startup():
 # Include routers
 app.include_router(auth_router)
 app.include_router(tasks_router)
+app.include_router(chat_router)
 
 
 @app.get("/")

@@ -57,3 +57,30 @@ export interface ApiError {
   detail: string;
   status?: number;
 }
+
+// Chat types
+export interface Message {
+  id: number;
+  conversation_id: number;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+}
+
+export interface Conversation {
+  id: number;
+  user_id: string;
+  title?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChatRequest {
+  message: string;
+  conversation_id?: number;
+}
+
+export interface ChatResponse {
+  message: Message;
+  conversation_id: number;
+}
