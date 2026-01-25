@@ -1,0 +1,57 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║              📋 EXACT STEPS - Follow Karein Aur Mujhe Batayein               ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+## Step 1: Browser Console Object Expand Karein
+
+1. Browser mein F12 press karein
+2. Console tab mein jao
+3. Is line ko dhundo:
+   `[ChatInterface] Tool calls received: [{…}]`
+4. `{…}` ke aage jo ▶ (arrow) hai, us par click karein
+5. Object expand ho jayega
+6. Mujhe SCREENSHOT bhejein ya TEXT copy karke bhejein
+
+Expected output kuch aisa hoga:
+```
+Array(1)
+  0: {tool: "add_task", success: false, error: "..."}
+```
+
+## Step 2: Backend Terminal Logs Check Karein
+
+Backend terminal (jahan uvicorn chal raha hai) mein scroll karein aur yeh lines dhundo:
+
+```
+[DEBUG] Detected intent: ...
+[DEBUG] Current state from previous message: ...
+[DEBUG] Task info extracted: ...
+[DEBUG] Is complete: ...
+[DEBUG] Creating task with info: ...
+[DEBUG] MCP tool result: ...
+```
+
+Yeh saari lines mujhe copy karke bhejein.
+
+## Step 3: User ID Check Karein
+
+Browser console mein yeh command run karein:
+```javascript
+JSON.parse(localStorage.getItem('auth_user'))
+```
+
+Output mein `id` field ka value mujhe batayein.
+
+═══════════════════════════════════════════════════════════════════════════════
+
+## Yeh Teen Cheezein Mujhe Chahiye:
+
+1. ✅ Expanded console object (screenshot ya text)
+2. ✅ Backend terminal logs (copy-paste)
+3. ✅ User ID from localStorage
+
+Jab yeh teen cheezein mil jayengi, main exact problem identify kar sakta hoon.
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Abhi in steps ko follow karein aur mujhe results bhejein.

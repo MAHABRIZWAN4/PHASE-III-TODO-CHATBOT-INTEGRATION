@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import type { Task } from "@/lib/types";
 import { getTasks, toggleTaskComplete } from "@/lib/api";
 import TaskItem from "./TaskItem";
+import { useTaskUpdate } from "@/contexts/TaskUpdateContext";
 
 interface TaskListProps {
   onTaskUpdated?: () => void;
@@ -13,10 +14,22 @@ export default function TaskList({ onTaskUpdated }: TaskListProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const { onTaskRefresh } = useTaskUpdate();
 
   useEffect(() => {
     fetchTasks();
   }, []);
+
+  // Listen for task updates from chat
+  useEffect(() => {
+    console.log('[TaskList] Setting up task refresh listener');
+    const cleanup = onTaskRefresh(() => {
+      console.log('[TaskList] Task refresh triggered! Fetching tasks...');
+      fetchTasks();
+    });
+
+    return cleanup;
+  }, [onTaskRefresh]);
 
   const fetchTasks = async () => {
     try {

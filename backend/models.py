@@ -33,6 +33,8 @@ class Task(SQLModel, table=True):
     description: Optional[str] = Field(default=None, sa_column=Column(Text))
     completed: bool = Field(default=False, sa_column=Column(Boolean, default=False))
     due_date: Optional[datetime] = Field(default=None, sa_column=Column(DateTime, nullable=True))
+    priority: Optional[str] = Field(default="medium", max_length=20)  # high, medium, low
+    category: Optional[str] = Field(default=None, max_length=50)  # personal, work, shopping, etc.
     completed_at: Optional[datetime] = Field(default=None, sa_column=Column(DateTime, nullable=True))
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

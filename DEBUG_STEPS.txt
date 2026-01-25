@@ -1,0 +1,56 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    🔍 DEBUG: Expand Console Object                           ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Console mein `[ChatInterface] Tool calls received: [{…}]` dikha raha hai.
+
+Mujhe yeh dekhna hai ke us `{…}` object mein kya hai.
+
+## Steps:
+
+1. Browser console mein jao
+2. `[ChatInterface] Tool calls received: [{…}]` wali line ko dhundo
+3. Us `{…}` ke aage jo ARROW (▶) hai, us par click karo
+4. Object expand ho jayega
+5. Mujhe batao ke andar kya dikha:
+   - tool: "???"
+   - success: ???
+   - result: ???
+   - error: ???
+
+## Example:
+
+Agar expand karoge toh kuch aisa dikhega:
+```
+[ChatInterface] Tool calls received: [
+  {
+    tool: "add_task",
+    success: true,
+    result: {...}
+  }
+]
+```
+
+Ya phir:
+```
+[ChatInterface] Tool calls received: [
+  {
+    tool: "add_task",
+    success: false,
+    error: "some error message"
+  }
+]
+```
+
+Mujhe yeh exact values chahiye.
+
+═══════════════════════════════════════════════════════════════════════════════
+
+ALSO: Backend terminal mein kya logs dikhe?
+Yeh lines dhundo:
+- [DEBUG] Detected intent: ???
+- [DEBUG] Task info extracted: ???
+- [DEBUG] Creating task with info: ???
+- [DEBUG] MCP tool result: ???
+
+Yeh bhi mujhe batao.

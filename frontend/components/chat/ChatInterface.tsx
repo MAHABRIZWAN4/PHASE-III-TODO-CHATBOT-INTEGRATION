@@ -4,10 +4,11 @@ import { useState, useEffect, useRef } from "react";
 import type { Message } from "@/lib/types";
 import { sendChatMessage } from "@/lib/chat-api";
 import MessageBubble from "./MessageBubble";
+import { useTaskUpdate } from "@/contexts/TaskUpdateContext";
 
 interface ChatInterfaceProps {
-  conversationId?: number;
-  onConversationCreated?: (conversationId: number) => void;
+  conversationId?: string;
+  onConversationCreated?: (conversationId: string) => void;
 }
 
 /**
@@ -23,10 +24,11 @@ export default function ChatInterface({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [currentConversationId, setCurrentConversationId] = useState<
-    number | undefined
+    string | undefined
   >(conversationId);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { triggerTaskRefresh } = useTaskUpdate();
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -51,9 +53,10 @@ export default function ChatInterface({
     setLoading(true);
 
     // Optimistically add user message to UI
+    const tempId = `temp-${Date.now()}`;
     const tempUserMessage: Message = {
-      id: Date.now(), // Temporary ID
-      conversation_id: currentConversationId || 0,
+      id: tempId,
+      conversation_id: currentConversationId || "",
       role: "user",
       content: userMessageContent,
       created_at: new Date().toISOString(),
@@ -73,29 +76,45 @@ export default function ChatInterface({
         onConversationCreated?.(response.conversation_id);
       }
 
+      // Check if a task was added successfully and trigger refresh
+      if (response.metadata?.tool_calls) {
+        console.log('[ChatInterface] Tool calls received:', response.metadata.tool_calls);
+        const taskAdded = response.metadata.tool_calls.some(
+          (call) => call.tool === "add_task" && call.success
+        );
+        console.log('[ChatInterface] Task added:', taskAdded);
+        if (taskAdded) {
+          // Trigger task refresh to update dashboard
+          console.log('[ChatInterface] Triggering task refresh...');
+          triggerTaskRefresh();
+        }
+      } else {
+        console.log('[ChatInterface] No metadata or tool_calls in response');
+      }
+
       // Replace temp user message and add assistant message
       setMessages((prev) => {
-        const withoutTemp = prev.filter((msg) => msg.id !== tempUserMessage.id);
+        const withoutTemp = prev.filter((msg) => msg.id !== tempId);
         return [
           ...withoutTemp,
           {
             ...tempUserMessage,
-            id: Date.now() - 1, // Use timestamp for user message ID
+            id: `user-${Date.now()}`, // Temporary user message ID
             conversation_id: response.conversation_id,
           },
           {
-            id: Date.now(), // Use timestamp for assistant message ID
+            id: response.message_id, // Use the actual message ID from backend
             conversation_id: response.conversation_id,
             role: "assistant" as const,
             content: response.response,
-            timestamp: new Date().toISOString(),
+            created_at: new Date().toISOString(),
           },
         ];
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send message");
       // Remove optimistic user message on error
-      setMessages((prev) => prev.filter((msg) => msg.id !== tempUserMessage.id));
+      setMessages((prev) => prev.filter((msg) => msg.id !== tempId));
       // Restore input message
       setInputMessage(userMessageContent);
     } finally {

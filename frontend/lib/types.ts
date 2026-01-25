@@ -15,6 +15,9 @@ export interface Task {
   title: string;
   description?: string | null;
   completed: boolean;
+  due_date?: string | null;
+  priority?: string;
+  category?: string;
   created_at: string;
   updated_at: string;
 }
@@ -60,15 +63,15 @@ export interface ApiError {
 
 // Chat types
 export interface Message {
-  id: number;
-  conversation_id: number;
+  id: string;  // UUID
+  conversation_id: string;  // UUID
   role: "user" | "assistant";
   content: string;
   created_at: string;
 }
 
 export interface Conversation {
-  id: number;
+  id: string;  // UUID
   user_id: string;
   title?: string;
   created_at: string;
@@ -77,10 +80,21 @@ export interface Conversation {
 
 export interface ChatRequest {
   message: string;
-  conversation_id?: number;
+  conversation_id?: string;  // UUID
 }
 
 export interface ChatResponse {
-  message: Message;
-  conversation_id: number;
+  conversation_id: string;  // UUID
+  message_id: string;  // UUID
+  response: string;  // AI response text
+  metadata?: {
+    tool_calls?: Array<{
+      tool: string;
+      success: boolean;
+      result?: any;
+      error?: string;
+    }>;
+    language?: string;
+    model?: string;
+  };
 }

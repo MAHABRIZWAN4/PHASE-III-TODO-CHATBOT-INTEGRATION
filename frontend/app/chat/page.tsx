@@ -13,7 +13,7 @@ import ChatInterface from "@/components/chat/ChatInterface";
 export default function ChatPage() {
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [conversationId, setConversationId] = useState<number | undefined>();
+  const [conversationId, setConversationId] = useState<string | undefined>();
 
   useEffect(() => {
     // Get user from localStorage on client side only
@@ -29,7 +29,7 @@ export default function ChatPage() {
     logout();
   };
 
-  const handleConversationCreated = (newConversationId: number) => {
+  const handleConversationCreated = (newConversationId: string) => {
     setConversationId(newConversationId);
   };
 

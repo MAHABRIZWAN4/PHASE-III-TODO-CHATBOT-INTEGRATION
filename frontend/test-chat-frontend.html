@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat API Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 { color: #4ec9b0; }
+        h2 { color: #569cd6; margin-top: 30px; }
+        .input-group {
+            margin: 15px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #9cdcfe;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            background: #2d2d2d;
+            border: 1px solid #3e3e3e;
+            color: #d4d4d4;
+            font-family: monospace;
+        }
+        button {
+            padding: 10px 20px;
+            background: #0e639c;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1177bb;
+        }
+        .output {
+            background: #2d2d2d;
+            border: 1px solid #3e3e3e;
+            padding: 15px;
+            margin: 15px 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success { color: #4ec9b0; }
+        .error { color: #f48771; }
+        .warning { color: #dcdcaa; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Chat API Debug Tool</h1>
+        <p>Test the chat endpoint and verify task creation</p>
+
+        <h2>Step 1: Get Your User Info</h2>
+        <button onclick="getUserInfo()">Get User Info from localStorage</button>
+        <div id="userInfo" class="output"></div>
+
+        <h2>Step 2: Send Chat Message</h2>
+        <div class="input-group">
+            <label>User ID (from Step 1):</label>
+            <input type="text" id="userId" placeholder="Your user ID">
+        </div>
+        <div class="input-group">
+            <label>Auth Token (from Step 1):</label>
+            <input type="text" id="authToken" placeholder="Your JWT token">
+        </div>
+        <div class="input-group">
+            <label>Message:</label>
+            <textarea id="message" rows="3">Add task to buy groceries tomorrow with high priority</textarea>
+        </div>
+        <button onclick="sendChatMessage()">Send Chat Message</button>
+        <div id="chatResponse" class="output"></div>
+
+        <h2>Step 3: Check Tasks</h2>
+        <button onclick="getTasks()">Get All Tasks</button>
+        <div id="tasksResponse" class="output"></div>
+
+        <h2>Step 4: Trigger Manual Refresh</h2>
+        <p>If task was created but not showing, this tests the refresh mechanism:</p>
+        <button onclick="testRefresh()">Test Task Refresh Event</button>
+        <div id="refreshOutput" class="output"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8001';
+
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : '';
+            const timestamp = new Date().toLocaleTimeString();
+            element.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+        }
+
+        function getUserInfo() {
+            const output = document.getElementById('userInfo');
+            output.innerHTML = '';
+
+            try {
+                const userStr = localStorage.getItem('auth_user');
+                const tokenStr = localStorage.getItem('auth_token');
+
+                if (!userStr) {
+                    log('userInfo', 'No user found in localStorage. Please login first.', 'error');
+                    return;
+                }
+
+                const user = JSON.parse(userStr);
+                const token = tokenStr ? JSON.parse(tokenStr) : null;
+
+                log('userInfo', '✓ User Info Found:', 'success');
+                log('userInfo', `  User ID: ${user.id}`);
+                log('userInfo', `  Email: ${user.email}`);
+                log('userInfo', `  Name: ${user.name || 'N/A'}`);
+
+                if (token) {
+                    log('userInfo', `\n✓ Auth Token Found:`, 'success');
+                    log('userInfo', `  Token: ${token.token.substring(0, 20)}...`);
+                    log('userInfo', `  Expires: ${new Date(token.expiresAt).toLocaleString()}`);
+
+                    // Auto-fill the form
+                    document.getElementById('userId').value = user.id;
+                    document.getElementById('authToken').value = token.token;
+                } else {
+                    log('userInfo', '\n⚠ No auth token found', 'warning');
+                }
+            } catch (error) {
+                log('userInfo', `✗ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function sendChatMessage() {
+            const output = document.getElementById('chatResponse');
+            output.innerHTML = '';
+
+            const userId = document.getElementById('userId').value;
+            const token = document.getElementById('authToken').value;
+            const message = document.getElementById('message').value;
+
+            if (!userId || !token || !message) {
+                log('chatResponse', '✗ Please fill in all fields', 'error');
+                return;
+            }
+
+            log('chatResponse', 'Sending chat message...');
+
+            try {
+                const response = await fetch(`${API_URL}/api/${userId}/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ message })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    log('chatResponse', `✗ HTTP ${response.status}: ${data.detail || 'Request failed'}`, 'error');
+                    return;
+                }
+
+                log('chatResponse', '✓ Response received:', 'success');
+                log('chatResponse', `  Conversation ID: ${data.conversation_id}`);
+                log('chatResponse', `  Message ID: ${data.message_id}`);
+                log('chatResponse', `  Response: ${data.response}`);
+
+                if (data.metadata) {
+                    log('chatResponse', '\n📋 Metadata:');
+                    log('chatResponse', `  Language: ${data.metadata.language}`);
+                    log('chatResponse', `  Model: ${data.metadata.model}`);
+
+                    if (data.metadata.tool_calls && data.metadata.tool_calls.length > 0) {
+                        log('chatResponse', `\n🔧 Tool Calls (${data.metadata.tool_calls.length}):`, 'success');
+                        data.metadata.tool_calls.forEach((call, i) => {
+                            log('chatResponse', `  [${i+1}] Tool: ${call.tool}`);
+                            log('chatResponse', `      Success: ${call.success}`, call.success ? 'success' : 'error');
+                            if (call.result) {
+                                log('chatResponse', `      Result: ${JSON.stringify(call.result, null, 2)}`);
+                            }
+                            if (call.error) {
+                                log('chatResponse', `      Error: ${call.error}`, 'error');
+                            }
+                        });
+
+                        const taskAdded = data.metadata.tool_calls.some(
+                            call => call.tool === 'add_task' && call.success
+                        );
+
+                        if (taskAdded) {
+                            log('chatResponse', '\n✓ Task was successfully added!', 'success');
+                            log('chatResponse', '  Now check Step 3 to verify it appears in the task list');
+                        } else {
+                            log('chatResponse', '\n⚠ Task was NOT added', 'warning');
+                        }
+                    } else {
+                        log('chatResponse', '\n⚠ No tool calls in response', 'warning');
+                    }
+                }
+
+                log('chatResponse', '\n📄 Full Response:');
+                log('chatResponse', JSON.stringify(data, null, 2));
+
+            } catch (error) {
+                log('chatResponse', `✗ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function getTasks() {
+            const output = document.getElementById('tasksResponse');
+            output.innerHTML = '';
+
+            const userId = document.getElementById('userId').value;
+            const token = document.getElementById('authToken').value;
+
+            if (!userId || !token) {
+                log('tasksResponse', '✗ Please fill in User ID and Token first', 'error');
+                return;
+            }
+
+            log('tasksResponse', 'Fetching tasks...');
+
+            try {
+                const response = await fetch(`${API_URL}/api/${userId}/tasks`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    log('tasksResponse', `✗ HTTP ${response.status}: ${data.detail || 'Request failed'}`, 'error');
+                    return;
+                }
+
+                log('tasksResponse', `✓ Found ${data.length} task(s):`, 'success');
+
+                if (data.length === 0) {
+                    log('tasksResponse', '  No tasks found', 'warning');
+                } else {
+                    data.forEach((task, i) => {
+                        log('tasksResponse', `\n[${i+1}] Task #${task.id}`);
+                        log('tasksResponse', `    Title: ${task.title}`);
+                        log('tasksResponse', `    Completed: ${task.completed}`);
+                        log('tasksResponse', `    Priority: ${task.priority || 'N/A'}`);
+                        log('tasksResponse', `    Category: ${task.category || 'N/A'}`);
+                        log('tasksResponse', `    Due: ${task.due_date || 'N/A'}`);
+                        log('tasksResponse', `    Created: ${new Date(task.created_at).toLocaleString()}`);
+                    });
+                }
+
+            } catch (error) {
+                log('tasksResponse', `✗ Error: ${error.message}`, 'error');
+            }
+        }
+
+        function testRefresh() {
+            const output = document.getElementById('refreshOutput');
+            output.innerHTML = '';
+
+            log('refreshOutput', 'Testing task refresh mechanism...');
+            log('refreshOutput', 'This would trigger the TaskUpdateContext in the actual app');
+            log('refreshOutput', '\nIn the real app, check if:');
+            log('refreshOutput', '1. TaskUpdateProvider is wrapping your components');
+            log('refreshOutput', '2. ChatInterface is calling triggerTaskRefresh()');
+            log('refreshOutput', '3. TaskList is listening with onTaskRefresh()');
+            log('refreshOutput', '\nOpen browser console and check for any errors');
+        }
+
+        // Auto-load user info on page load
+        window.onload = getUserInfo;
+    </script>
+</body>
+</html>

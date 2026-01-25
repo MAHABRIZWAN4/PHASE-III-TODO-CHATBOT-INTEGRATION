@@ -37,7 +37,9 @@ async def add_task(
     user_id: str,
     title: str,
     description: Optional[str] = None,
-    due_date: Optional[str] = None
+    due_date: Optional[str] = None,
+    priority: Optional[str] = "medium",
+    category: Optional[str] = None
 ) -> Dict[str, Any]:
     """Create a new task for a user.
 
@@ -46,6 +48,8 @@ async def add_task(
         title: Task title (required, 1-200 characters)
         description: Optional task description (max 1000 characters)
         due_date: Optional due date in ISO 8601 format
+        priority: Task priority (high, medium, low), defaults to medium
+        category: Task category (personal, work, shopping, etc.)
 
     Returns:
         Dict with success status, task object, and message or error
@@ -82,6 +86,22 @@ async def add_task(
                 "code": "VALIDATION_ERROR"
             }
 
+        # Validate priority
+        if priority and priority.lower() not in ["high", "medium", "low"]:
+            return {
+                "success": False,
+                "error": "Priority must be 'high', 'medium', or 'low'",
+                "code": "VALIDATION_ERROR"
+            }
+
+        # Validate category length
+        if category and len(category) > 50:
+            return {
+                "success": False,
+                "error": "Category must be 50 characters or less",
+                "code": "VALIDATION_ERROR"
+            }
+
         # Parse due_date if provided
         parsed_due_date = None
         if due_date:
@@ -101,6 +121,8 @@ async def add_task(
                 title=title.strip(),
                 description=description.strip() if description else None,
                 due_date=parsed_due_date,
+                priority=priority.lower() if priority else "medium",
+                category=category.strip() if category else None,
                 completed=False
             )
 
@@ -118,6 +140,8 @@ async def add_task(
                     "description": new_task.description,
                     "completed": new_task.completed,
                     "due_date": new_task.due_date.isoformat() if new_task.due_date else None,
+                    "priority": new_task.priority,
+                    "category": new_task.category,
                     "created_at": new_task.created_at.isoformat(),
                     "updated_at": new_task.updated_at.isoformat()
                 },
@@ -215,6 +239,8 @@ async def list_tasks(
                     "description": task.description,
                     "completed": task.completed,
                     "due_date": task.due_date.isoformat() if task.due_date else None,
+                    "priority": task.priority,
+                    "category": task.category,
                     "created_at": task.created_at.isoformat(),
                     "updated_at": task.updated_at.isoformat()
                 }
@@ -413,7 +439,9 @@ async def update_task(
     task_id: str,
     title: Optional[str] = None,
     description: Optional[str] = None,
-    due_date: Optional[str] = None
+    due_date: Optional[str] = None,
+    priority: Optional[str] = None,
+    category: Optional[str] = None
 ) -> Dict[str, Any]:
     """Update task properties.
 
@@ -423,6 +451,8 @@ async def update_task(
         title: New task title (optional, 1-200 characters)
         description: New task description (optional, max 1000 characters)
         due_date: New due date (optional, ISO 8601 format)
+        priority: New priority (optional, high/medium/low)
+        category: New category (optional, max 50 characters)
 
     Returns:
         Dict with success status, updated task, and message or error
@@ -477,6 +507,22 @@ async def update_task(
                 "code": "VALIDATION_ERROR"
             }
 
+        # Validate priority
+        if priority is not None and priority.lower() not in ["high", "medium", "low"]:
+            return {
+                "success": False,
+                "error": "Priority must be 'high', 'medium', or 'low'",
+                "code": "VALIDATION_ERROR"
+            }
+
+        # Validate category length
+        if category is not None and len(category) > 50:
+            return {
+                "success": False,
+                "error": "Category must be 50 characters or less",
+                "code": "VALIDATION_ERROR"
+            }
+
         # Parse due_date if provided
         parsed_due_date = None
         if due_date is not None:
@@ -515,6 +561,10 @@ async def update_task(
                 task.description = description.strip() if description else None
             if due_date is not None:
                 task.due_date = parsed_due_date
+            if priority is not None:
+                task.priority = priority.lower()
+            if category is not None:
+                task.category = category.strip() if category else None
 
             task.updated_at = datetime.utcnow()
 
@@ -531,6 +581,8 @@ async def update_task(
                     "description": task.description,
                     "completed": task.completed,
                     "due_date": task.due_date.isoformat() if task.due_date else None,
+                    "priority": task.priority,
+                    "category": task.category,
                     "updated_at": task.updated_at.isoformat()
                 },
                 "message": "Task updated successfully"
@@ -582,6 +634,17 @@ def list_tools() -> List[Dict[str, Any]]:
                         "type": "string",
                         "format": "date-time",
                         "description": "Optional due date in ISO 8601 format"
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": ["high", "medium", "low"],
+                        "default": "medium",
+                        "description": "Task priority (high, medium, low)"
+                    },
+                    "category": {
+                        "type": "string",
+                        "maxLength": 50,
+                        "description": "Task category (personal, work, shopping, etc.)"
                     }
                 },
                 "required": ["user_id", "title"]
@@ -684,6 +747,16 @@ def list_tools() -> List[Dict[str, Any]]:
                         "type": "string",
                         "format": "date-time",
                         "description": "New due date"
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": ["high", "medium", "low"],
+                        "description": "New task priority"
+                    },
+                    "category": {
+                        "type": "string",
+                        "maxLength": 50,
+                        "description": "New task category"
                     }
                 },
                 "required": ["user_id", "task_id"]
@@ -709,7 +782,9 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
             user_id=arguments.get("user_id"),
             title=arguments.get("title"),
             description=arguments.get("description"),
-            due_date=arguments.get("due_date")
+            due_date=arguments.get("due_date"),
+            priority=arguments.get("priority", "medium"),
+            category=arguments.get("category")
         )
 
     elif name == "list_tasks":
@@ -738,7 +813,9 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
             task_id=arguments.get("task_id"),
             title=arguments.get("title"),
             description=arguments.get("description"),
-            due_date=arguments.get("due_date")
+            due_date=arguments.get("due_date"),
+            priority=arguments.get("priority"),
+            category=arguments.get("category")
         )
 
     else:

@@ -32,13 +32,13 @@ function getHeaders(): HeadersInit {
 /**
  * Send a chat message to the AI assistant
  * @param message - The user's message text
- * @param conversationId - Optional conversation ID to continue an existing conversation
+ * @param conversationId - Optional conversation ID (UUID) to continue an existing conversation
  * @returns ChatResponse with the assistant's reply and conversation ID
  * @throws Error if user is not authenticated or request fails
  */
 export async function sendChatMessage(
   message: string,
-  conversationId?: number
+  conversationId?: string
 ): Promise<ChatResponse> {
   const user = getAuthUser();
   if (!user) {
@@ -79,12 +79,12 @@ export async function getConversations(): Promise<any[]> {
 
 /**
  * Get all messages for a specific conversation
- * @param conversationId - The conversation ID
+ * @param conversationId - The conversation ID (UUID)
  * @returns Array of messages
  * @throws Error if user is not authenticated or request fails
  */
 export async function getConversationMessages(
-  conversationId: number
+  conversationId: string
 ): Promise<Message[]> {
   const user = getAuthUser();
   if (!user) {

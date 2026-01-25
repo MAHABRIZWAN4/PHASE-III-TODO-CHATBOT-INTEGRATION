@@ -1,0 +1,51 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    🔍 CRITICAL: Backend Logs Chahiye                         ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+## Problem Found!
+
+Intent detection fail ho raha hai follow-up messages ke liye:
+- "Add task to buy groceries" → Intent: adding_task ✓
+- "Task Title: Buy groceries" → Intent: None ✗
+- "Due date: Tomorrow" → Intent: None ✗
+
+Lekin code mein check hai ke agar previous state mein "adding_task" hai, toh continue kare.
+
+## Mujhe Backend Terminal Logs Chahiye
+
+Backend terminal (jahan uvicorn chal raha hai) mein yeh lines dikhni chahiye:
+
+```
+[DEBUG] Detected intent: adding_task
+[DEBUG] Current state from previous message: None
+[DEBUG] Task info extracted: {'intent': 'adding_task', 'title': 'buy groceries'}
+[DEBUG] Is complete: True
+[DEBUG] Creating task with info: ...
+[DEBUG] MCP tool result: ...
+```
+
+## Kaise Dekhen:
+
+1. Backend terminal window ko open karein (jahan "uvicorn main:app --reload" chal raha hai)
+2. Scroll up karein aur [DEBUG] lines dhundo
+3. Saari [DEBUG] lines ko copy karein
+4. Mujhe paste karein
+
+## Agar [DEBUG] Lines Nahi Dikh Rahi:
+
+Toh backend reload nahi hua. Yeh karein:
+
+```bash
+# Backend terminal mein Ctrl+C press karein
+# Phir dobara start karein:
+cd /mnt/d/new/Phase-III/backend
+source .venv/bin/activate
+uvicorn main:app --reload --port 8001
+```
+
+Phir chat mein message bhejein aur logs dekhen.
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Backend logs ke bina main exact problem identify nahi kar sakta.
+Please backend terminal ki output share karein.
