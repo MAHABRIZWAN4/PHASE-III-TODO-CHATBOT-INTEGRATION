@@ -103,12 +103,24 @@ type TodoResponse = {
 ```
 
 ### Tailwind CSS Patterns
+
+**IMPORTANT**: Always reference the **Tailwind Design System** skill (`.claude/skills/tailwind-design-system.md`) for consistent styling. This design system provides:
+
+- **Color Palette**: Use `bg-primary-500`, `text-neutral-900`, `border-secondary-300` (not arbitrary colors)
+- **Typography Scale**: Use `text-4xl font-bold`, `text-base leading-normal` (predefined scales)
+- **Spacing System**: Use `p-4`, `gap-6`, `space-y-8` (4px-based increments)
+- **Component Patterns**: Pre-defined button styles, input fields, cards, navigation, alerts
+- **Responsive Breakpoints**: `sm:640px`, `md:768px`, `lg:1024px`, `xl:1280px`, `2xl:1536px`
+- **Accessibility Patterns**: Focus rings, ARIA labels, keyboard navigation styles
+
+**Styling Guidelines:**
 ```
-- Use semantic color scales (bg-blue-500, not bg-[#0000ff])
-- Follow spacing scale (p-4, m-2, not px-7)
+- Use design system tokens: bg-primary-500 (not bg-blue-500 or bg-[#0000ff])
+- Follow spacing scale: p-4, m-6 (not px-7 or arbitrary values)
 - Mobile-first: base classes → sm: → md: → lg: → xl:
-- Use component modifiers (hover:, focus:, active:)
+- Use component modifiers: hover:, focus:, active:, disabled:
 - Group classes logically for readability
+- Reference component patterns from design system for consistency
 ```
 
 ### Accessibility Standards

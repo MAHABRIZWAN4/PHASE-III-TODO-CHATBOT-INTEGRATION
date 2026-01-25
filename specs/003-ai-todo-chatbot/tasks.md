@@ -129,12 +129,12 @@
 
 ### Implementation for User Story 2
 
-- [ ] T045 [US2] Enhance ChatService to handle list_tasks intent in backend/app/services/chat_service.py
-- [ ] T046 [US2] Enhance ChatService to handle complete_task intent in backend/app/services/chat_service.py
-- [ ] T047 [US2] Enhance ChatService to handle delete_task intent in backend/app/services/chat_service.py
+- [X] T045 [US2] Enhance ChatService to handle list_tasks intent in backend/app/services/chat_service.py
+- [X] T046 [US2] Enhance ChatService to handle complete_task intent in backend/app/services/chat_service.py
+- [X] T047 [US2] Enhance ChatService to handle delete_task intent in backend/app/services/chat_service.py
 - [ ] T048 [US2] Enhance ChatService to handle update_task intent in backend/app/services/chat_service.py
-- [ ] T049 [US2] Add task formatting for chat responses in backend/app/utils/formatters.py
-- [ ] T050 [US2] Update ChatInterface to display task lists in frontend/components/chat/ChatInterface.tsx
+- [X] T049 [US2] Add task formatting for chat responses in backend/app/utils/formatters.py
+- [X] T050 [US2] Update ChatInterface to display task lists in frontend/components/chat/ChatInterface.tsx
 - [ ] T051 [P] [US2] Frontend test for task list display in frontend/tests/components/ChatInterface.test.tsx
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work - full task CRUD via chat
