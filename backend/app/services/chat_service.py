@@ -106,6 +106,7 @@ class ChatService:
 
         Reference: T024 - Implement send_message() method with OpenRouter API calls
         """
+        print(f"[DEBUG] ChatService.send_message called with user_id: '{user_id}'")
         # Step 1: Get or create conversation (T025)
         conversation = await self._get_or_create_conversation(
             user_id=user_id,
@@ -444,7 +445,7 @@ Be conversational and friendly. Keep questions short and clear."""
                 result = call.get("result", {})
 
                 if tool_name == "list_tasks":
-                    # Format task list nicely
+                    # Format task list nicely with sequential positions
                     tasks = result.get("tasks", [])
                     count = result.get("count", 0)
 
@@ -452,14 +453,15 @@ Be conversational and friendly. Keep questions short and clear."""
                         formatted_results.append(f"✓ {tool_name}: User has no tasks.")
                     else:
                         task_list = []
-                        for i, task in enumerate(tasks[:10], 1):  # Show first 10
+                        for position, task in enumerate(tasks[:10], 1):  # Show first 10 with positions
                             title = task.get("title", "Untitled")
                             completed = task.get("completed", False)
                             status = "✓" if completed else "○"
                             priority = task.get("priority", "medium")
                             category = task.get("category", "")
 
-                            task_str = f"{i}. {status} {title}"
+                            # Use sequential position (1, 2, 3) for user-friendly display
+                            task_str = f"{position}. {status} {title}"
                             if priority:
                                 task_str += f" [Priority: {priority}]"
                             if category:
@@ -613,6 +615,7 @@ Be conversational and friendly. Keep questions short and clear."""
         # Step 4: Handle listing_tasks intent
         elif intent == "listing_tasks":
             try:
+                print(f"[DEBUG] Calling list_tasks with user_id: '{user_id}'")
                 result = await call_tool(
                     name="list_tasks",
                     arguments={
@@ -622,33 +625,66 @@ Be conversational and friendly. Keep questions short and clear."""
                     }
                 )
 
+                print(f"[DEBUG] list_tasks result: success={result.get('success')}, count={result.get('count', 0)}")
+
+                # Save position→ID mapping in conversation state
+                if result.get('success') and result.get('tasks'):
+                    tasks = result['tasks']
+                    task_mapping = {}
+                    for position, task in enumerate(tasks, 1):
+                        task_id = task.get('id')
+                        if task_id:
+                            task_mapping[position] = int(task_id)
+
+                    # Store mapping with timestamp
+                    conversation_state = {
+                        "task_mapping": task_mapping,
+                        "mapping_created_at": datetime.utcnow().isoformat(),
+                        "task_count": len(tasks)
+                    }
+                    print(f"[DEBUG] Saved task mapping: {task_mapping}")
+                else:
+                    conversation_state = None
+
                 tool_calls.append({
                     "tool": "list_tasks",
                     "success": result.get("success", False),
                     "result": result
                 })
 
+                return tool_calls, conversation_state
+
             except Exception as e:
+                print(f"[DEBUG] Error in list_tasks: {str(e)}")
                 tool_calls.append({
                     "tool": "list_tasks",
                     "success": False,
                     "error": str(e)
                 })
+                return tool_calls, None
 
         # Step 5: Handle completing_task intent
         elif intent == "completing_task":
-            # Extract task ID from message
-            task_id_match = re.search(r'\b(?:task|id)\s*#?(\d+)\b', user_message, re.IGNORECASE)
-            if task_id_match:
-                task_id = task_id_match.group(1)
+            # Resolve task reference (position, title, or ID)
+            task_id = await self._resolve_task_reference(
+                user_message=user_message,
+                user_id=user_id,
+                current_state=current_state,
+                session=session
+            )
+
+            if task_id:
+                print(f"[DEBUG] Resolved task_id: {task_id}")
                 try:
                     result = await call_tool(
                         name="complete_task",
                         arguments={
                             "user_id": user_id,
-                            "task_id": task_id
+                            "task_id": str(task_id)
                         }
                     )
+
+                    print(f"[DEBUG] complete_task result: {result}")
 
                     tool_calls.append({
                         "tool": "complete_task",
@@ -657,13 +693,211 @@ Be conversational and friendly. Keep questions short and clear."""
                     })
 
                 except Exception as e:
+                    print(f"[DEBUG] Error calling complete_task: {str(e)}")
                     tool_calls.append({
                         "tool": "complete_task",
                         "success": False,
                         "error": str(e)
                     })
+            else:
+                print(f"[DEBUG] Could not resolve task reference from message")
+                tool_calls.append({
+                    "tool": "complete_task",
+                    "success": False,
+                    "error": "Could not identify which task to complete. Please list your tasks first or specify the task by name."
+                })
+
+            # Preserve conversation state (don't lose the mapping!)
+            return tool_calls, current_state
+
+        # Step 6: Handle deleting_task intent
+        elif intent == "deleting_task":
+            # Resolve task reference (position, title, or ID)
+            task_id = await self._resolve_task_reference(
+                user_message=user_message,
+                user_id=user_id,
+                current_state=current_state,
+                session=session
+            )
+
+            if task_id:
+                print(f"[DEBUG] Resolved task_id: {task_id}")
+                try:
+                    result = await call_tool(
+                        name="delete_task",
+                        arguments={
+                            "user_id": user_id,
+                            "task_id": str(task_id)
+                        }
+                    )
+
+                    print(f"[DEBUG] delete_task result: {result}")
+
+                    tool_calls.append({
+                        "tool": "delete_task",
+                        "success": result.get("success", False),
+                        "result": result
+                    })
+
+                except Exception as e:
+                    print(f"[DEBUG] Error calling delete_task: {str(e)}")
+                    tool_calls.append({
+                        "tool": "delete_task",
+                        "success": False,
+                        "error": str(e)
+                    })
+            else:
+                print(f"[DEBUG] Could not resolve task reference from message")
+                tool_calls.append({
+                    "tool": "delete_task",
+                    "success": False,
+                    "error": "Could not identify which task to delete. Please list your tasks first or specify the task by name."
+                })
+
+            # Preserve conversation state (don't lose the mapping!)
+            return tool_calls, current_state
 
         return tool_calls, conversation_state
+
+    async def _resolve_task_reference(
+        self,
+        user_message: str,
+        user_id: str,
+        current_state: Optional[Dict[str, Any]],
+        session: AsyncSession
+    ) -> Optional[int]:
+        """Resolve task reference from user message.
+
+        Supports three methods:
+        1. By position: "task 1", "task 2" (uses mapping from conversation state)
+        2. By title: "jjs task", "the lunch task" (searches by title)
+        3. By ID: "task 36" (direct database ID)
+
+        Priority order: Position > Title > ID
+
+        Args:
+            user_message: User's message
+            user_id: User ID for task lookup
+            current_state: Current conversation state with task mapping
+            session: Database session
+
+        Returns:
+            Task ID (int) or None if not found
+        """
+        print(f"[DEBUG] _resolve_task_reference called with message: '{user_message}'")
+
+        # Extract number from message (e.g., "task 1", "task 36")
+        number_match = re.search(r'\b(?:task|id)\s*#?(\d+)\b', user_message, re.IGNORECASE)
+        number = int(number_match.group(1)) if number_match else None
+
+        # Extract title/text from message ONLY if no number pattern found
+        title = None
+        if not number:
+            # Try multiple patterns for title extraction
+            title_patterns = [
+                r'(?:complete|delete|mark|finish)\s+(?:the\s+)?([a-zA-Z][a-zA-Z0-9\s]+?)\s+(?:task|as)',  # "complete jjs task"
+                r'(?:complete|delete|mark|finish)\s+([a-zA-Z][a-zA-Z0-9\s]+)$',  # "complete jjs"
+            ]
+
+            for pattern in title_patterns:
+                title_match = re.search(pattern, user_message, re.IGNORECASE)
+                if title_match:
+                    title = title_match.group(1).strip()
+                    break
+
+        print(f"[DEBUG] Extracted - number: {number}, title: '{title}'")
+
+        # Get task mapping from conversation state
+        # Note: JSON serialization converts int keys to strings, so we need to convert back
+        task_mapping_raw = current_state.get('task_mapping', {}) if current_state else {}
+        task_mapping = {}
+        if task_mapping_raw:
+            # Convert string keys back to integers
+            for key, value in task_mapping_raw.items():
+                try:
+                    task_mapping[int(key)] = value
+                except (ValueError, TypeError):
+                    pass
+
+        task_count = current_state.get('task_count', 0) if current_state else 0
+
+        print(f"[DEBUG] Task mapping (converted): {task_mapping}, task_count: {task_count}")
+
+        # Priority 1: Position (if number is in valid range and mapping exists)
+        if number and task_mapping and 1 <= number <= task_count:
+            # Convert position to actual ID using mapping
+            task_id = task_mapping.get(number)
+            if task_id:
+                print(f"[DEBUG] Resolved by POSITION: {number} → ID {task_id}")
+                return task_id
+
+        # Priority 2: Title (if text pattern found)
+        if title:
+            print(f"[DEBUG] Attempting title search for: '{title}'")
+            task_id = await self._search_task_by_title(user_id, title, session)
+            if task_id:
+                print(f"[DEBUG] Resolved by TITLE: '{title}' → ID {task_id}")
+                return task_id
+
+        # Priority 3: Direct ID (if number exists and is larger than task count)
+        if number and (not task_mapping or number > task_count):
+            print(f"[DEBUG] Resolved by DIRECT ID: {number}")
+            return number
+
+        print(f"[DEBUG] Could not resolve task reference")
+        return None
+
+    async def _search_task_by_title(
+        self,
+        user_id: str,
+        title_query: str,
+        session: AsyncSession
+    ) -> Optional[int]:
+        """Search for a task by title (case-insensitive, partial match).
+
+        Args:
+            user_id: User ID for filtering
+            title_query: Title to search for
+            session: Database session
+
+        Returns:
+            Task ID if found, None otherwise
+        """
+        from models import Task  # Correct import path
+        from sqlmodel import select
+
+        try:
+            # Search for tasks with matching title (case-insensitive)
+            query = select(Task).where(
+                Task.user_id == user_id,
+                Task.title.ilike(f"%{title_query}%")  # Partial match
+            ).limit(5)  # Limit to 5 matches
+
+            result = await session.exec(query)
+            tasks = result.all()
+
+            if not tasks:
+                print(f"[DEBUG] No tasks found matching title: '{title_query}'")
+                return None
+
+            if len(tasks) == 1:
+                # Exact match found
+                print(f"[DEBUG] Found 1 task matching '{title_query}': ID {tasks[0].id}")
+                return tasks[0].id
+
+            # Multiple matches - try exact match first
+            for task in tasks:
+                if task.title.lower() == title_query.lower():
+                    print(f"[DEBUG] Found exact match for '{title_query}': ID {task.id}")
+                    return task.id
+
+            # Return first match if no exact match
+            print(f"[DEBUG] Multiple matches for '{title_query}', returning first: ID {tasks[0].id}")
+            return tasks[0].id
+
+        except Exception as e:
+            print(f"[DEBUG] Error searching task by title: {str(e)}")
+            return None
 
     def _detect_intent(self, message: str) -> Optional[str]:
         """Detect user intent from message.
@@ -672,9 +906,46 @@ Be conversational and friendly. Keep questions short and clear."""
             message: User message text
 
         Returns:
-            Intent string or None (adding_task, listing_tasks, completing_task, etc.)
+            Intent string or None (adding_task, listing_tasks, completing_task, deleting_task, etc.)
         """
         message_lower = message.lower()
+
+        print(f"[DEBUG] _detect_intent called with message: '{message_lower}'")
+
+        # Check delete patterns FIRST (before list patterns to avoid conflicts)
+        delete_patterns = [
+            r'\bdelete\b.*\btask\b',
+            r'\bremove\b.*\btask\b',
+            r'\btask\b.*\bdelete\b',
+            r'\btask\b.*\bremove\b',
+            r'\bkaam\b.*\bdelete\b',
+            r'\bkaam\b.*\bhatao\b',
+            r'\bhatao\b.*\btask\b',
+            r'\bdelete\b\s+(?:the\s+)?[a-zA-Z]',  # "delete buy", "delete the lunch"
+            r'\bremove\b\s+(?:the\s+)?[a-zA-Z]',  # "remove buy", "remove the lunch"
+        ]
+
+        for pattern in delete_patterns:
+            if re.search(pattern, message_lower):
+                print(f"[DEBUG] Matched delete_pattern: {pattern}")
+                return "deleting_task"
+
+        # Check complete patterns SECOND (before list patterns)
+        complete_patterns = [
+            r'\bcomplete\b.*\btask\b',
+            r'\bmark\b.*\b(?:done|completed)\b',
+            r'\bmark\b.*\btask\b.*\b(?:done|completed|complete)\b',
+            r'\bfinish\b.*\btask\b',
+            r'\btask\b.*\bcomplete\b',
+            r'\btask\b.*\bdone\b',
+            r'\bkaam\b.*\bho\s*gaya\b',
+            r'\bkaam\b.*\bcomplete\b',
+        ]
+
+        for pattern in complete_patterns:
+            if re.search(pattern, message_lower):
+                print(f"[DEBUG] Matched complete_pattern: {pattern}")
+                return "completing_task"
 
         # Add task patterns (English and Urdu)
         add_patterns = [
@@ -689,9 +960,10 @@ Be conversational and friendly. Keep questions short and clear."""
 
         for pattern in add_patterns:
             if re.search(pattern, message_lower):
+                print(f"[DEBUG] Matched add_pattern: {pattern}")
                 return "adding_task"
 
-        # List tasks patterns (English and Urdu/Mixed)
+        # List tasks patterns (English and Urdu/Mixed) - CHECK LAST to avoid conflicts
         list_patterns = [
             # English patterns
             r'\blist\b.*\btask',
@@ -710,28 +982,16 @@ Be conversational and friendly. Keep questions short and clear."""
             r'\bkitnay\b.*\btask',  # "kitnay task"
             r'\btask\b.*\bhein',  # "task hein"
             r'\btask\b.*\bhai',  # "task hai"
-            r'\btask\b.*\blisted',  # "task listed"
             r'\bkaam\b.*\bdikhao',  # "kaam dikhao"
             r'\bkaam\b.*\bhein',  # "kaam hein"
         ]
 
         for pattern in list_patterns:
             if re.search(pattern, message_lower):
+                print(f"[DEBUG] Matched list_pattern: {pattern}")
                 return "listing_tasks"
 
-        # Complete task patterns
-        complete_patterns = [
-            r'\bcomplete\b.*\btask\b',
-            r'\bmark\b.*\bdone\b',
-            r'\bfinish\b.*\btask\b',
-            r'\btask\b.*\bcomplete\b',
-            r'\bkaam\b.*\bho\s*gaya\b',
-        ]
-
-        for pattern in complete_patterns:
-            if re.search(pattern, message_lower):
-                return "completing_task"
-
+        print(f"[DEBUG] No intent pattern matched")
         return None
 
     def _extract_task_info(self, message: str, current_state: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:

@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head><title>Check User ID</title></head>
+<body>
+<h2>Current User Info:</h2>
+<pre id="output"></pre>
+<script>
+const authUser = localStorage.getItem('auth_user');
+const authToken = localStorage.getItem('auth_token');
+document.getElementById('output').textContent = 
+  'User: ' + authUser + '\n\n' +
+  'Token: ' + (authToken ? 'Present (length: ' + authToken.length + ')' : 'Not found');
+</script>
+</body>
+</html>

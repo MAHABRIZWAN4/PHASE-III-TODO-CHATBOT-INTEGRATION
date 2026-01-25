@@ -319,10 +319,11 @@ async def complete_task(
                 }
 
             # Validate ownership
+            print(f"[DEBUG] complete_task - Task user_id: '{task.user_id}', Provided user_id: '{user_id}'")
             if task.user_id != user_id:
                 return {
                     "success": False,
-                    "error": "Unauthorized: Task does not belong to this user",
+                    "error": f"Unauthorized: Task belongs to '{task.user_id}' but you are '{user_id}'",
                     "code": "UNAUTHORIZED"
                 }
 
@@ -409,10 +410,11 @@ async def delete_task(
                 }
 
             # Validate ownership
+            print(f"[DEBUG] delete_task - Task user_id: '{task.user_id}', Provided user_id: '{user_id}'")
             if task.user_id != user_id:
                 return {
                     "success": False,
-                    "error": "Unauthorized: Task does not belong to this user",
+                    "error": f"Unauthorized: Task belongs to '{task.user_id}' but you are '{user_id}'",
                     "code": "UNAUTHORIZED"
                 }
 

@@ -76,14 +76,19 @@ export default function ChatInterface({
         onConversationCreated?.(response.conversation_id);
       }
 
-      // Check if a task was added successfully and trigger refresh
+      // Check if any task operation was successful and trigger refresh
       if (response.metadata?.tool_calls) {
         console.log('[ChatInterface] Tool calls received:', response.metadata.tool_calls);
-        const taskAdded = response.metadata.tool_calls.some(
-          (call) => call.tool === "add_task" && call.success
+        const taskModified = response.metadata.tool_calls.some(
+          (call) =>
+            (call.tool === "add_task" ||
+             call.tool === "complete_task" ||
+             call.tool === "delete_task" ||
+             call.tool === "update_task") &&
+            call.success
         );
-        console.log('[ChatInterface] Task added:', taskAdded);
-        if (taskAdded) {
+        console.log('[ChatInterface] Task modified:', taskModified);
+        if (taskModified) {
           // Trigger task refresh to update dashboard
           console.log('[ChatInterface] Triggering task refresh...');
           triggerTaskRefresh();
