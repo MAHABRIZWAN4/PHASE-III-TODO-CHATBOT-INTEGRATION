@@ -18,11 +18,29 @@ router = APIRouter(prefix="/api/tasks", tags=["Tasks"])
 class TaskCreate(BaseModel):
     title: constr(min_length=1, max_length=200)
     description: Optional[constr(max_length=1000)] = None
+    due_date: Optional[str] = None
+    priority: Optional[str] = "medium"
+    category: Optional[str] = None
+
+    @validator('priority')
+    def validate_priority(cls, v):
+        if v and v.lower() not in ['high', 'medium', 'low']:
+            raise ValueError('Priority must be high, medium, or low')
+        return v.lower() if v else 'medium'
 
 
 class TaskUpdate(BaseModel):
     title: Optional[constr(min_length=1, max_length=200)] = None
     description: Optional[constr(max_length=1000)] = None
+    due_date: Optional[str] = None
+    priority: Optional[str] = None
+    category: Optional[str] = None
+
+    @validator('priority')
+    def validate_priority(cls, v):
+        if v and v.lower() not in ['high', 'medium', 'low']:
+            raise ValueError('Priority must be high, medium, or low')
+        return v.lower() if v else None
 
 
 class TaskResponse(BaseModel):
@@ -31,6 +49,9 @@ class TaskResponse(BaseModel):
     title: str
     description: Optional[str] = None
     completed: bool
+    due_date: Optional[str] = None
+    priority: Optional[str] = None
+    category: Optional[str] = None
     created_at: str
     updated_at: str
 
@@ -51,10 +72,24 @@ async def create_task(
     user_id: str = Depends(get_current_user_id)
 ):
     """Create a new task for the authenticated user."""
+    # Parse due_date if provided
+    due_date_obj = None
+    if task_data.due_date:
+        try:
+            due_date_obj = datetime.fromisoformat(task_data.due_date.replace('Z', '+00:00'))
+        except (ValueError, AttributeError):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid due_date format. Use ISO 8601 format"
+            )
+
     new_task = Task(
         user_id=user_id,
         title=task_data.title,
         description=task_data.description,
+        due_date=due_date_obj,
+        priority=task_data.priority,
+        category=task_data.category,
         completed=False
     )
 
@@ -68,6 +103,9 @@ async def create_task(
         title=new_task.title,
         description=new_task.description,
         completed=new_task.completed,
+        due_date=new_task.due_date.isoformat() if new_task.due_date else None,
+        priority=new_task.priority,
+        category=new_task.category,
         created_at=new_task.created_at.isoformat(),
         updated_at=new_task.updated_at.isoformat()
     )
@@ -92,6 +130,9 @@ async def list_tasks(
             title=task.title,
             description=task.description,
             completed=task.completed,
+            due_date=task.due_date.isoformat() if task.due_date else None,
+            priority=task.priority,
+            category=task.category,
             created_at=task.created_at.isoformat(),
             updated_at=task.updated_at.isoformat()
         )
@@ -122,6 +163,9 @@ async def get_task(
         title=task.title,
         description=task.description,
         completed=task.completed,
+        due_date=task.due_date.isoformat() if task.due_date else None,
+        priority=task.priority,
+        category=task.category,
         created_at=task.created_at.isoformat(),
         updated_at=task.updated_at.isoformat()
     )
@@ -150,6 +194,18 @@ async def update_task(
         task.title = task_update.title
     if task_update.description is not None:
         task.description = task_update.description
+    if task_update.due_date is not None:
+        try:
+            task.due_date = datetime.fromisoformat(task_update.due_date.replace('Z', '+00:00'))
+        except (ValueError, AttributeError):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid due_date format. Use ISO 8601 format"
+            )
+    if task_update.priority is not None:
+        task.priority = task_update.priority
+    if task_update.category is not None:
+        task.category = task_update.category
 
     task.updated_at = datetime.utcnow()
 
@@ -163,6 +219,9 @@ async def update_task(
         title=task.title,
         description=task.description,
         completed=task.completed,
+        due_date=task.due_date.isoformat() if task.due_date else None,
+        priority=task.priority,
+        category=task.category,
         created_at=task.created_at.isoformat(),
         updated_at=task.updated_at.isoformat()
     )
@@ -185,7 +244,7 @@ async def delete_task(
 
     validate_task_ownership(task, user_id)
 
-    session.delete(task)
+    await session.delete(task)
     await session.commit()
 
 
@@ -220,6 +279,9 @@ async def toggle_complete(
         title=task.title,
         description=task.description,
         completed=task.completed,
+        due_date=task.due_date.isoformat() if task.due_date else None,
+        priority=task.priority,
+        category=task.category,
         created_at=task.created_at.isoformat(),
         updated_at=task.updated_at.isoformat()
     )

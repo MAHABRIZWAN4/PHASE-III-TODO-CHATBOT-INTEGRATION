@@ -131,15 +131,31 @@ class ChatService:
             session=session
         )
 
-        # Step 5: Call OpenRouter API
-        system_prompt = self._build_system_prompt(detected_language)
-        ai_response_text, tool_calls_metadata, conversation_state = await self._call_openrouter(
+        # Step 4.5: Execute tools BEFORE calling AI (so AI can see results)
+        tool_calls_metadata, conversation_state = await self._parse_and_execute_tools(
             user_id=user_id,
-            system_prompt=system_prompt,
-            conversation_history=conversation_history,
+            ai_response="",  # Not used for intent detection
             user_message=request.message,
             conversation_id=conversation.id,
             session=session
+        )
+
+        # Step 4.6: If tools were executed, add results to conversation history
+        if tool_calls_metadata:
+            # Add tool results as system message for AI to see
+            tool_results_text = self._format_tool_results(tool_calls_metadata)
+            conversation_history.append({
+                "role": "system",
+                "content": f"Tool execution results:\n{tool_results_text}"
+            })
+
+        # Step 5: Call OpenRouter API (AI can now see tool results)
+        system_prompt = self._build_system_prompt(detected_language)
+        ai_response_text = await self._call_openrouter_simple(
+            user_id=user_id,
+            system_prompt=system_prompt,
+            conversation_history=conversation_history,
+            user_message=request.message
         )
 
         # Step 6: Save assistant response (T026)
@@ -348,33 +364,26 @@ When adding a task, ask for missing information step by step:
 
 Be conversational and friendly. Keep questions short and clear."""
 
-    async def _call_openrouter(
+    async def _call_openrouter_simple(
         self,
         user_id: str,
         system_prompt: str,
         conversation_history: List[Dict[str, str]],
-        user_message: str,
-        conversation_id: UUID,
-        session: AsyncSession
-    ) -> Tuple[str, List[Dict[str, Any]], Optional[Dict[str, Any]]]:
-        """Call OpenRouter API and parse response.
+        user_message: str
+    ) -> str:
+        """Call OpenRouter API without tool execution (tools already executed).
 
         Args:
             user_id: User ID for MCP tool calls
             system_prompt: System prompt for the AI
-            conversation_history: Previous messages in conversation
+            conversation_history: Previous messages in conversation (may include tool results)
             user_message: Current user message
-            conversation_id: Current conversation ID
-            session: Database session
 
         Returns:
-            Tuple of (AI response text, tool calls metadata, conversation state)
+            AI response text
 
         Raises:
             HTTPException: If OpenRouter API call fails
-
-        Reference: T024 - Implement OpenRouter API calls
-        Reference: T027 - Implement MCP tool calling logic
         """
         from fastapi import HTTPException, status
 
@@ -384,9 +393,8 @@ Be conversational and friendly. Keep questions short and clear."""
                 {"role": "system", "content": system_prompt}
             ]
 
-            # Add conversation history (excluding the current user message which is already in history)
-            # We only add history if it doesn't already include the current message
-            if conversation_history and conversation_history[-1]["content"] != user_message:
+            # Add conversation history (may include tool results)
+            if conversation_history:
                 messages.extend(conversation_history)
 
             # Ensure the last message is the current user message
@@ -404,16 +412,7 @@ Be conversational and friendly. Keep questions short and clear."""
             # Extract AI response
             ai_response = response.choices[0].message.content
 
-            # Parse for tool calls (T027)
-            tool_calls_metadata, conversation_state = await self._parse_and_execute_tools(
-                user_id=user_id,
-                ai_response=ai_response,
-                user_message=user_message,
-                conversation_id=conversation_id,
-                session=session
-            )
-
-            return ai_response, tool_calls_metadata, conversation_state
+            return ai_response
 
         except Exception as e:
             # Log error (in production, use proper logging)
@@ -423,6 +422,76 @@ Be conversational and friendly. Keep questions short and clear."""
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="AI service temporarily unavailable. Please try again."
             )
+
+    def _format_tool_results(self, tool_calls: List[Dict[str, Any]]) -> str:
+        """Format tool execution results for AI to understand.
+
+        Args:
+            tool_calls: List of tool call results
+
+        Returns:
+            Formatted string with tool results
+        """
+        if not tool_calls:
+            return "No tools were executed."
+
+        formatted_results = []
+        for call in tool_calls:
+            tool_name = call.get("tool", "unknown")
+            success = call.get("success", False)
+
+            if success:
+                result = call.get("result", {})
+
+                if tool_name == "list_tasks":
+                    # Format task list nicely
+                    tasks = result.get("tasks", [])
+                    count = result.get("count", 0)
+
+                    if count == 0:
+                        formatted_results.append(f"✓ {tool_name}: User has no tasks.")
+                    else:
+                        task_list = []
+                        for i, task in enumerate(tasks[:10], 1):  # Show first 10
+                            title = task.get("title", "Untitled")
+                            completed = task.get("completed", False)
+                            status = "✓" if completed else "○"
+                            priority = task.get("priority", "medium")
+                            category = task.get("category", "")
+
+                            task_str = f"{i}. {status} {title}"
+                            if priority:
+                                task_str += f" [Priority: {priority}]"
+                            if category:
+                                task_str += f" [Category: {category}]"
+
+                            task_list.append(task_str)
+
+                        formatted_results.append(
+                            f"✓ {tool_name}: Found {count} tasks:\n" + "\n".join(task_list)
+                        )
+
+                elif tool_name == "add_task":
+                    # Format task creation result
+                    task = result.get("task", {})
+                    title = task.get("title", "Untitled")
+                    formatted_results.append(f"✓ {tool_name}: Successfully created task '{title}'")
+
+                elif tool_name == "complete_task":
+                    # Format task completion result
+                    task = result.get("task", {})
+                    title = task.get("title", "Untitled")
+                    formatted_results.append(f"✓ {tool_name}: Successfully completed task '{title}'")
+
+                else:
+                    # Generic success message
+                    formatted_results.append(f"✓ {tool_name}: Success")
+            else:
+                # Tool failed
+                error = call.get("error", "Unknown error")
+                formatted_results.append(f"✗ {tool_name}: Failed - {error}")
+
+        return "\n".join(formatted_results)
 
     async def _parse_and_execute_tools(
         self,
@@ -486,13 +555,29 @@ Be conversational and friendly. Keep questions short and clear."""
             if self._is_task_info_complete(task_info):
                 # We have at least a title, create the task
                 print(f"[DEBUG] Creating task with info: {task_info}")
+
+                # Generate description if not provided
+                description = task_info.get("description")
+                if not description:
+                    # Auto-generate description from task details
+                    desc_parts = []
+                    if task_info.get("priority"):
+                        desc_parts.append(f"Priority: {task_info['priority'].capitalize()}")
+                    if task_info.get("category"):
+                        desc_parts.append(f"Category: {task_info['category'].capitalize()}")
+                    if task_info.get("due_date"):
+                        desc_parts.append(f"Due: {task_info['due_date'][:10]}")
+
+                    if desc_parts:
+                        description = " | ".join(desc_parts)
+
                 try:
                     result = await call_tool(
                         name="add_task",
                         arguments={
                             "user_id": user_id,
                             "title": task_info["title"],
-                            "description": task_info.get("description"),
+                            "description": description,
                             "due_date": task_info.get("due_date"),
                             "priority": task_info.get("priority", "medium"),
                             "category": task_info.get("category")
@@ -606,13 +691,28 @@ Be conversational and friendly. Keep questions short and clear."""
             if re.search(pattern, message_lower):
                 return "adding_task"
 
-        # List tasks patterns
+        # List tasks patterns (English and Urdu/Mixed)
         list_patterns = [
+            # English patterns
             r'\blist\b.*\btask',
             r'\bshow\b.*\btask',
             r'\bmy\b.*\btask',
+            r'\bview\b.*\btask',
+            r'\bsee\b.*\btask',
+            r'\bhow\s+many\b.*\btask',
+            r'\btask.*\blist',
+
+            # Urdu/Mixed patterns
             r'\btask\b.*\bdikhao\b',
             r'\bmeray\b.*\bkaam\b',
+            r'\bmere\b.*\btask',  # "mere task"
+            r'\bkitne\b.*\btask',  # "kitne task"
+            r'\bkitnay\b.*\btask',  # "kitnay task"
+            r'\btask\b.*\bhein',  # "task hein"
+            r'\btask\b.*\bhai',  # "task hai"
+            r'\btask\b.*\blisted',  # "task listed"
+            r'\bkaam\b.*\bdikhao',  # "kaam dikhao"
+            r'\bkaam\b.*\bhein',  # "kaam hein"
         ]
 
         for pattern in list_patterns:
@@ -655,15 +755,17 @@ Be conversational and friendly. Keep questions short and clear."""
             else:
                 # Try to extract title from "add task to..." or "create task..."
                 title_patterns = [
-                    r'(?:add|create|new)\s+(?:task|kaam)\s+(?:to|for)?\s*(.+)',
-                    r'task\s+(?:add|banao)\s+(?:karo?)?\s*[:-]?\s*(.+)',
+                    # Match "add task to X" but stop before temporal/priority/category words
+                    r'(?:add|create|new)\s+(?:task|kaam)\s+(?:to|for)?\s*(.+?)(?:\s+(?:tomorrow|today|next week|yesterday|with|in|for|by|on|at|high|medium|low|personal|work|shopping)|\s*$)',
+                    r'task\s+(?:add|banao)\s+(?:karo?)?\s*[:-]?\s*(.+?)(?:\s+(?:tomorrow|today|next week|yesterday|with|in|for|by|on|at|high|medium|low|personal|work|shopping)|\s*$)',
                 ]
                 for pattern in title_patterns:
                     match = re.search(pattern, message, re.IGNORECASE)
                     if match:
                         title = match.group(1).strip()
-                        # Clean up common endings
-                        title = re.sub(r'\s+(please|plz|kar\s*do|kar\s*dein)$', '', title, flags=re.IGNORECASE)
+                        # Clean up common endings and extra words
+                        title = re.sub(r'\s+(please|plz|kar\s*do|kar\s*dein|tomorrow|today|with|in).*$', '', title, flags=re.IGNORECASE)
+                        title = title.strip()
                         if title:
                             info["title"] = title
                             break

@@ -15,6 +15,7 @@ interface TaskItemProps {
 export default function TaskItem({ task, onToggleComplete, onTaskUpdated }: TaskItemProps) {
   const [showEditForm, setShowEditForm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleEdit = () => {
     setShowEditForm(true);
@@ -35,12 +36,36 @@ export default function TaskItem({ task, onToggleComplete, onTaskUpdated }: Task
   };
 
   const handleDeleteConfirm = async () => {
+    // Prevent double-click
+    if (isDeleting) {
+      console.log('[TaskItem] Already deleting, ignoring duplicate click');
+      return;
+    }
+
     try {
+      setIsDeleting(true);
+      console.log('[TaskItem] Deleting task:', task.id);
       await deleteTask(task.id);
+      console.log('[TaskItem] Task deleted successfully');
       setShowDeleteConfirm(false);
-      onTaskUpdated?.();
+
+      // Call onTaskUpdated to refresh the list
+      if (onTaskUpdated) {
+        console.log('[TaskItem] Calling onTaskUpdated to refresh list');
+        onTaskUpdated();
+      } else {
+        console.warn('[TaskItem] onTaskUpdated is not defined!');
+      }
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to delete task");
+      console.error('[TaskItem] Delete failed:', err);
+      // Only show alert if it's not a "Task not found" error (which means it was already deleted)
+      const errorMessage = err instanceof Error ? err.message : "Failed to delete task";
+      if (!errorMessage.includes("Task not found")) {
+        alert(errorMessage);
+      }
+      setShowDeleteConfirm(false);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -96,6 +121,35 @@ export default function TaskItem({ task, onToggleComplete, onTaskUpdated }: Task
                     {task.description}
                   </p>
                 )}
+
+                {/* Task metadata badges */}
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {task.priority && (
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        task.priority === "high"
+                          ? "bg-red-100 text-red-800"
+                          : task.priority === "medium"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-green-100 text-green-800"
+                      }`}
+                    >
+                      {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)} Priority
+                    </span>
+                  )}
+
+                  {task.category && (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      {task.category.charAt(0).toUpperCase() + task.category.slice(1)}
+                    </span>
+                  )}
+
+                  {task.due_date && (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                      📅 Due: {new Date(task.due_date).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             <div className="flex space-x-2">
@@ -134,6 +188,7 @@ export default function TaskItem({ task, onToggleComplete, onTaskUpdated }: Task
           taskTitle={task.title}
           onConfirm={handleDeleteConfirm}
           onCancel={() => setShowDeleteConfirm(false)}
+          isDeleting={isDeleting}
         />
       )}
     </div>

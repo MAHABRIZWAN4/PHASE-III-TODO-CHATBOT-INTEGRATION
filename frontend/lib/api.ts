@@ -101,6 +101,13 @@ export async function deleteTask(id: number): Promise<void> {
     headers: getHeaders(),
   });
 
+  // If task is already deleted (404), treat it as success
+  // since the desired state (task doesn't exist) is achieved
+  if (response.status === 404) {
+    console.log('[API] Task already deleted (404), treating as success');
+    return;
+  }
+
   if (!response.ok) {
     const error: ApiError = await response.json();
     throw new Error(error.detail || "Request failed");

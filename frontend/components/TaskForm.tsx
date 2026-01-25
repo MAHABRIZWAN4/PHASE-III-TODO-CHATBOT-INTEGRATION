@@ -94,6 +94,64 @@ export default function TaskForm({
         </p>
       </div>
 
+      <div>
+        <label htmlFor="due_date" className="block text-sm font-medium text-gray-700">
+          Due Date
+        </label>
+        <input
+          id="due_date"
+          name="due_date"
+          type="date"
+          value={formData.due_date || ""}
+          onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+        />
+        <p className="mt-1 text-xs text-gray-500">
+          Optional - Select a due date for this task
+        </p>
+      </div>
+
+      <div>
+        <label htmlFor="priority" className="block text-sm font-medium text-gray-700">
+          Priority
+        </label>
+        <select
+          id="priority"
+          name="priority"
+          value={formData.priority || "medium"}
+          onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+        >
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+        <p className="mt-1 text-xs text-gray-500">
+          Select task priority level
+        </p>
+      </div>
+
+      <div>
+        <label htmlFor="category" className="block text-sm font-medium text-gray-700">
+          Category
+        </label>
+        <select
+          id="category"
+          name="category"
+          value={formData.category || ""}
+          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+        >
+          <option value="">None</option>
+          <option value="personal">Personal</option>
+          <option value="work">Work</option>
+          <option value="shopping">Shopping</option>
+        </select>
+        <p className="mt-1 text-xs text-gray-500">
+          Optional - Categorize your task
+        </p>
+      </div>
+
       <div className="flex space-x-3">
         <button
           type="submit"

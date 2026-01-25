@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { Task } from "@/lib/types";
 import { getTasks, toggleTaskComplete } from "@/lib/api";
 import TaskItem from "./TaskItem";
@@ -16,7 +16,10 @@ export default function TaskList({ onTaskUpdated }: TaskListProps) {
   const [error, setError] = useState("");
   const { onTaskRefresh } = useTaskUpdate();
 
+  console.log('[TaskList] Component rendered with', tasks.length, 'tasks');
+
   useEffect(() => {
+    console.log('[TaskList] Initial mount - fetching tasks');
     fetchTasks();
   }, []);
 
@@ -31,18 +34,36 @@ export default function TaskList({ onTaskUpdated }: TaskListProps) {
     return cleanup;
   }, [onTaskRefresh]);
 
-  const fetchTasks = async () => {
+  // Log whenever tasks state changes
+  useEffect(() => {
+    console.log('[TaskList] Tasks state changed! New count:', tasks.length);
+    console.log('[TaskList] Task IDs in state:', tasks.map(t => t.id));
+  }, [tasks]);
+
+  const fetchTasks = useCallback(async () => {
     try {
+      const timestamp = new Date().toISOString();
+      console.log(`[TaskList ${timestamp}] fetchTasks called - Starting fetch...`);
+      console.log(`[TaskList ${timestamp}] Current tasks count:`, tasks.length);
+
       setLoading(true);
       const data = await getTasks();
+
+      console.log(`[TaskList ${timestamp}] Fetched tasks:`, data.length, 'tasks');
+      console.log(`[TaskList ${timestamp}] Task IDs:`, data.map(t => t.id));
+
       setTasks(data);
+      console.log(`[TaskList ${timestamp}] State updated with new tasks`);
+
       setError("");
     } catch (err) {
+      console.error('[TaskList] Error fetching tasks:', err);
       setError(err instanceof Error ? err.message : "Failed to load tasks");
     } finally {
       setLoading(false);
+      console.log(`[TaskList] fetchTasks completed`);
     }
-  };
+  }, [tasks.length]); // Only recreate if tasks count changes
 
   const handleToggleComplete = async (taskId: number) => {
     try {
@@ -108,6 +129,7 @@ export default function TaskList({ onTaskUpdated }: TaskListProps) {
           key={task.id}
           task={task}
           onToggleComplete={handleToggleComplete}
+          onTaskUpdated={fetchTasks}
         />
       ))}
     </div>

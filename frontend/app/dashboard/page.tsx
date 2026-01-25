@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import { getAuthUser, logout, type AuthUser } from "@/lib/auth";
 import TaskList from "@/components/TaskList";
 import TaskForm from "@/components/TaskForm";
+import { useTaskUpdate } from "@/contexts/TaskUpdateContext";
 
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const { triggerTaskRefresh } = useTaskUpdate();
 
   useEffect(() => {
     // Get user from localStorage on client side only
@@ -27,11 +29,13 @@ export default function DashboardPage() {
 
   const handleTaskAdded = () => {
     setShowAddForm(false);
+    // Trigger task refresh instead of full page reload
+    triggerTaskRefresh();
   };
 
   const handleTaskUpdated = () => {
-    // Force refresh of task list
-    window.location.reload();
+    // Trigger task refresh instead of full page reload
+    triggerTaskRefresh();
   };
 
   // Show loading while checking auth

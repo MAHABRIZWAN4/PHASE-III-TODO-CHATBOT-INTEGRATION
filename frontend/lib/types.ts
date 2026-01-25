@@ -37,11 +37,17 @@ export interface LoginRequest {
 export interface CreateTaskRequest {
   title: string;
   description?: string;
+  due_date?: string;
+  priority?: string;
+  category?: string;
 }
 
 export interface UpdateTaskRequest {
   title?: string;
   description?: string;
+  due_date?: string;
+  priority?: string;
+  category?: string;
 }
 
 // API Response types

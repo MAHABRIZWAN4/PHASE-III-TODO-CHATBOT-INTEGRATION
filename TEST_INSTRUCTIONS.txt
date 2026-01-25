@@ -1,0 +1,92 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    🧪 STEP-BY-STEP TEST INSTRUCTIONS                         ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+## IMPORTANT: OLD vs NEW Tasks
+
+⚠️  Backend fixes only work for NEW tasks created AFTER backend restart!
+⚠️  OLD tasks will still have wrong titles and missing metadata!
+
+## Step 1: Hard Refresh Browser (MANDATORY)
+
+1. Open browser
+2. Press: Ctrl + Shift + R (Windows/Linux) or Cmd + Shift + R (Mac)
+3. This clears cache and loads fresh code
+
+## Step 2: Delete ALL Old Tasks (Optional but Recommended)
+
+To avoid confusion, delete all old tasks from dashboard:
+1. Go to: http://localhost:3000/dashboard
+2. Delete each old task one by one
+3. This ensures you're only looking at NEW tasks
+
+## Step 3: Create a NEW Test Task
+
+1. Go to: http://localhost:3000/chat
+2. Send this EXACT message:
+   ```
+   Add task to buy milk tomorrow with high priority in shopping category
+   ```
+3. Wait for chatbot response
+4. Chatbot should confirm task creation
+
+## Step 4: Check Dashboard
+
+1. Go to: http://localhost:3000/dashboard
+2. Look for the NEW task
+3. Verify:
+
+   ✅ Title should be: "buy milk" (NOT "buy milk tomorrow with high priority...")
+   ✅ Description should show: "Priority: High | Category: Shopping | Due: [date]"
+   ✅ Should see badges:
+      - 🔴 High Priority (red badge)
+      - 🔵 Shopping (blue badge)
+      - 🟣 Due: [date] (purple badge)
+
+## Step 5: Test Delete Button
+
+1. Click "Delete" button on the NEW task
+2. Confirmation modal should appear
+3. Click "Confirm"
+4. Task should disappear IMMEDIATELY (no F5 needed)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+## If Issues Still Persist
+
+### Issue 1: Title Still Wrong
+- Check backend terminal for [DEBUG] logs
+- Should show: [DEBUG] Task info extracted: {'title': 'buy milk', ...}
+- If showing full message, backend didn't restart properly
+
+### Issue 2: Badges Not Showing
+- Press F12 in browser
+- Check Console for errors
+- Check if task has priority/category/due_date fields
+- Run in console: `console.log(tasks)` to see task data
+
+### Issue 3: Delete Not Working
+- Press F12 in browser
+- Click Delete
+- Check Console for errors
+- Check Network tab for DELETE request
+
+═══════════════════════════════════════════════════════════════════════════════
+
+## Quick Verification Commands
+
+### Check Backend is Running:
+```bash
+curl http://localhost:8001/health
+```
+Should return: {"status":"healthy"}
+
+### Check Frontend is Running:
+```bash
+curl -s http://localhost:3000 | head -5
+```
+Should return HTML
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Follow these steps EXACTLY and tell me the results for each step!
