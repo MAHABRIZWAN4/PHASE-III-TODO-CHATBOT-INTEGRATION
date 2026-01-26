@@ -144,7 +144,7 @@ class ChatService:
         # Step 4.6: If tools were executed, add results to conversation history
         if tool_calls_metadata:
             # Add tool results as system message for AI to see
-            tool_results_text = self._format_tool_results(tool_calls_metadata)
+            tool_results_text = self._format_tool_results(tool_calls_metadata, detected_language)
             conversation_history.append({
                 "role": "system",
                 "content": f"Tool execution results:\n{tool_results_text}"
@@ -424,17 +424,18 @@ Be conversational and friendly. Keep questions short and clear."""
                 detail="AI service temporarily unavailable. Please try again."
             )
 
-    def _format_tool_results(self, tool_calls: List[Dict[str, Any]]) -> str:
+    def _format_tool_results(self, tool_calls: List[Dict[str, Any]], language: str = "english") -> str:
         """Format tool execution results for AI to understand.
 
         Args:
             tool_calls: List of tool call results
+            language: Language for formatting ("english" or "urdu")
 
         Returns:
             Formatted string with tool results
         """
         if not tool_calls:
-            return "No tools were executed."
+            return "کوئی ٹولز استعمال نہیں ہوئے۔" if language == "urdu" else "No tools were executed."
 
         formatted_results = []
         for call in tool_calls:
@@ -450,7 +451,8 @@ Be conversational and friendly. Keep questions short and clear."""
                     count = result.get("count", 0)
 
                     if count == 0:
-                        formatted_results.append(f"✓ {tool_name}: User has no tasks.")
+                        msg = "صارف کے پاس کوئی کام نہیں ہے۔" if language == "urdu" else "User has no tasks."
+                        formatted_results.append(f"✓ {tool_name}: {msg}")
                     else:
                         task_list = []
                         for position, task in enumerate(tasks[:10], 1):  # Show first 10 with positions
@@ -463,35 +465,47 @@ Be conversational and friendly. Keep questions short and clear."""
                             # Use sequential position (1, 2, 3) for user-friendly display
                             task_str = f"{position}. {status} {title}"
                             if priority:
-                                task_str += f" [Priority: {priority}]"
+                                priority_label = "ترجیح" if language == "urdu" else "Priority"
+                                task_str += f" [{priority_label}: {priority}]"
                             if category:
-                                task_str += f" [Category: {category}]"
+                                category_label = "زمرہ" if language == "urdu" else "Category"
+                                task_str += f" [{category_label}: {category}]"
 
                             task_list.append(task_str)
 
+                        found_msg = f"ملے {count} کام" if language == "urdu" else f"Found {count} tasks"
                         formatted_results.append(
-                            f"✓ {tool_name}: Found {count} tasks:\n" + "\n".join(task_list)
+                            f"✓ {tool_name}: {found_msg}:\n" + "\n".join(task_list)
                         )
 
                 elif tool_name == "add_task":
                     # Format task creation result
                     task = result.get("task", {})
                     title = task.get("title", "Untitled")
-                    formatted_results.append(f"✓ {tool_name}: Successfully created task '{title}'")
+                    msg = f"کام '{title}' کامیابی سے بنایا گیا" if language == "urdu" else f"Successfully created task '{title}'"
+                    formatted_results.append(f"✓ {tool_name}: {msg}")
 
                 elif tool_name == "complete_task":
                     # Format task completion result
                     task = result.get("task", {})
                     title = task.get("title", "Untitled")
-                    formatted_results.append(f"✓ {tool_name}: Successfully completed task '{title}'")
+                    msg = f"کام '{title}' مکمل ہو گیا" if language == "urdu" else f"Successfully completed task '{title}'"
+                    formatted_results.append(f"✓ {tool_name}: {msg}")
+
+                elif tool_name == "delete_task":
+                    # Format task deletion result
+                    msg = "کام کامیابی سے حذف ہو گیا" if language == "urdu" else "Task deleted successfully"
+                    formatted_results.append(f"✓ {tool_name}: {msg}")
 
                 else:
                     # Generic success message
-                    formatted_results.append(f"✓ {tool_name}: Success")
+                    msg = "کامیاب" if language == "urdu" else "Success"
+                    formatted_results.append(f"✓ {tool_name}: {msg}")
             else:
                 # Tool failed
                 error = call.get("error", "Unknown error")
-                formatted_results.append(f"✗ {tool_name}: Failed - {error}")
+                failed_msg = "ناکام" if language == "urdu" else "Failed"
+                formatted_results.append(f"✗ {tool_name}: {failed_msg} - {error}")
 
         return "\n".join(formatted_results)
 
@@ -914,15 +928,26 @@ Be conversational and friendly. Keep questions short and clear."""
 
         # Check delete patterns FIRST (before list patterns to avoid conflicts)
         delete_patterns = [
+            # English patterns
             r'\bdelete\b.*\btask\b',
             r'\bremove\b.*\btask\b',
             r'\btask\b.*\bdelete\b',
             r'\btask\b.*\bremove\b',
+            r'\bdelete\b\s+(?:the\s+)?[a-zA-Z]',  # "delete buy", "delete the lunch"
+            r'\bremove\b\s+(?:the\s+)?[a-zA-Z]',  # "remove buy", "remove the lunch"
+
+            # Romanized Urdu patterns
             r'\bkaam\b.*\bdelete\b',
             r'\bkaam\b.*\bhatao\b',
             r'\bhatao\b.*\btask\b',
-            r'\bdelete\b\s+(?:the\s+)?[a-zA-Z]',  # "delete buy", "delete the lunch"
-            r'\bremove\b\s+(?:the\s+)?[a-zA-Z]',  # "remove buy", "remove the lunch"
+
+            # Urdu script patterns
+            r'حذف.*کام',  # "hazf kaam" (delete task)
+            r'کام.*حذف',  # "kaam hazf" (task delete)
+            r'ہٹا.*کام',  # "hata kaam" (remove task)
+            r'کام.*ہٹا',  # "kaam hata" (task remove)
+            r'ڈیلیٹ.*کام',  # "delete kaam"
+            r'کام.*ڈیلیٹ',  # "kaam delete"
         ]
 
         for pattern in delete_patterns:
@@ -932,14 +957,25 @@ Be conversational and friendly. Keep questions short and clear."""
 
         # Check complete patterns SECOND (before list patterns)
         complete_patterns = [
+            # English patterns
             r'\bcomplete\b.*\btask\b',
             r'\bmark\b.*\b(?:done|completed)\b',
             r'\bmark\b.*\btask\b.*\b(?:done|completed|complete)\b',
             r'\bfinish\b.*\btask\b',
             r'\btask\b.*\bcomplete\b',
             r'\btask\b.*\bdone\b',
+
+            # Romanized Urdu patterns
             r'\bkaam\b.*\bho\s*gaya\b',
             r'\bkaam\b.*\bcomplete\b',
+
+            # Urdu script patterns
+            r'مکمل.*کام',  # "mukammal kaam" (complete task)
+            r'کام.*مکمل',  # "kaam mukammal" (task complete)
+            r'ہو.*گیا',  # "ho gaya" (done)
+            r'ختم.*کام',  # "khatam kaam" (finish task)
+            r'کام.*ختم',  # "kaam khatam" (task finish)
+            r'کام.*ہو.*گیا',  # "kaam ho gaya" (task done)
         ]
 
         for pattern in complete_patterns:
@@ -947,15 +983,42 @@ Be conversational and friendly. Keep questions short and clear."""
                 print(f"[DEBUG] Matched complete_pattern: {pattern}")
                 return "completing_task"
 
-        # Add task patterns (English and Urdu)
+        # Add task patterns (English, Romanized Urdu, and Urdu script)
         add_patterns = [
+            # English patterns
             r'\badd\b.*\btask\b',
             r'\bcreate\b.*\btask\b',
             r'\bnew\b.*\btask\b',
             r'\btask\b.*\badd\b',
+
+            # Romanized Urdu patterns
             r'\bkaam\b.*\badd\b',
             r'\btask\b.*\bbanao\b',
             r'\bnayi\b.*\btask\b',
+            r'\bnaya\b.*\bkaam\b',
+
+            # Urdu script patterns - flexible matching for natural speech
+            r'نیا.*کام',  # "naya kaam" (new task)
+            r'کام.*شامل',  # "kaam shamil" (add task)
+            r'شامل.*کام',  # "shamil kaam" (add task)
+            r'کام.*بنا',  # "kaam bana" (create task)
+            r'بنا.*کام',  # "bana kaam" (create task)
+            r'کام.*ایڈ',  # "kaam add"
+            r'ایڈ.*کام',  # "add kaam"
+
+            # Natural Urdu speech patterns with ٹاسک (task)
+            r'ٹاسک.*ڈال',  # "task daal" (add task)
+            r'ڈال.*ٹاسک',  # "daal task"
+            r'ٹاسک.*میں.*ڈال',  # "task mein daal" (add to task)
+            r'ٹاسک.*شامل',  # "task shamil"
+            r'شامل.*ٹاسک',  # "shamil task"
+            r'ٹاسک.*بنا',  # "task bana"
+            r'بنا.*ٹاسک',  # "bana task"
+
+            # More natural variations with کام
+            r'کام.*ڈال',  # "kaam daal"
+            r'ڈال.*کام',  # "daal kaam"
+            r'میں.*ڈال',  # "mein daal" (add in)
         ]
 
         for pattern in add_patterns:
@@ -963,7 +1026,7 @@ Be conversational and friendly. Keep questions short and clear."""
                 print(f"[DEBUG] Matched add_pattern: {pattern}")
                 return "adding_task"
 
-        # List tasks patterns (English and Urdu/Mixed) - CHECK LAST to avoid conflicts
+        # List tasks patterns (English, Romanized Urdu, and Urdu script) - CHECK LAST to avoid conflicts
         list_patterns = [
             # English patterns
             r'\blist\b.*\btask',
@@ -974,7 +1037,7 @@ Be conversational and friendly. Keep questions short and clear."""
             r'\bhow\s+many\b.*\btask',
             r'\btask.*\blist',
 
-            # Urdu/Mixed patterns
+            # Romanized Urdu patterns
             r'\btask\b.*\bdikhao\b',
             r'\bmeray\b.*\bkaam\b',
             r'\bmere\b.*\btask',  # "mere task"
@@ -984,6 +1047,16 @@ Be conversational and friendly. Keep questions short and clear."""
             r'\btask\b.*\bhai',  # "task hai"
             r'\bkaam\b.*\bdikhao',  # "kaam dikhao"
             r'\bkaam\b.*\bhein',  # "kaam hein"
+
+            # Urdu script patterns
+            r'کام.*دکھا',  # "kaam dikhao" (show tasks)
+            r'دکھا.*کام',  # "dikhao kaam" (show tasks)
+            r'میرے.*کام',  # "mere kaam" (my tasks)
+            r'کام.*کتنے',  # "kaam kitne" (how many tasks)
+            r'کتنے.*کام',  # "kitne kaam" (how many tasks)
+            r'کام.*ہیں',  # "kaam hain" (tasks are)
+            r'کام.*لسٹ',  # "kaam list"
+            r'لسٹ.*کام',  # "list kaam"
         ]
 
         for pattern in list_patterns:
@@ -1013,29 +1086,54 @@ Be conversational and friendly. Keep questions short and clear."""
             if title_structured:
                 info["title"] = title_structured.group(1).strip()
             else:
-                # Try to extract title from "add task to..." or "create task..."
-                title_patterns = [
-                    # Match "add task to X" but stop before temporal/priority/category words
-                    r'(?:add|create|new)\s+(?:task|kaam)\s+(?:to|for)?\s*(.+?)(?:\s+(?:tomorrow|today|next week|yesterday|with|in|for|by|on|at|high|medium|low|personal|work|shopping)|\s*$)',
-                    r'task\s+(?:add|banao)\s+(?:karo?)?\s*[:-]?\s*(.+?)(?:\s+(?:tomorrow|today|next week|yesterday|with|in|for|by|on|at|high|medium|low|personal|work|shopping)|\s*$)',
+                # Try Urdu patterns for title extraction - natural speech
+                urdu_title_patterns = [
+                    r'نام\s+ہے\s+(.+?)(?:\s*$)',  # "naam hai X" (name is X)
+                    r'کام\s+کا\s+نام\s+ہے\s+(.+?)(?:\s*$)',  # "kaam ka naam hai X" (task name is X)
+                    r'(?:نیا|نئی)\s+کام\s+(.+?)(?:\s*$)',  # "naya kaam X" (new task X)
+
+                    # Natural speech patterns - extract task from context
+                    r'مجھے\s+(.+?)\s+(?:ہے|بنانی\s+ہے|کرنی\s+ہے|کرنا\s+ہے)',  # "mujhe X hai/banana hai/karna hai"
+                    r'میں\s+(.+?)\s+(?:بناؤں|کروں|کرنا)',  # "mein X banao/karo/karna"
+                    r'(.+?)\s+(?:بنانی\s+ہے|کرنی\s+ہے|کرنا\s+ہے)',  # "X banana hai/karna hai"
                 ]
-                for pattern in title_patterns:
-                    match = re.search(pattern, message, re.IGNORECASE)
+
+                for pattern in urdu_title_patterns:
+                    match = re.search(pattern, message)
                     if match:
                         title = match.group(1).strip()
-                        # Clean up common endings and extra words
-                        title = re.sub(r'\s+(please|plz|kar\s*do|kar\s*dein|tomorrow|today|with|in).*$', '', title, flags=re.IGNORECASE)
-                        title = title.strip()
-                        if title:
+                        # Clean up temporal words that might be captured
+                        title = re.sub(r'\s*(?:کل|آج|اگلے|ہفتے|میرا|میرے|مجھے)\s*', ' ', title).strip()
+                        if title and len(title) > 2:  # Ensure we have a meaningful title
                             info["title"] = title
                             break
+
+                # Try English patterns if Urdu didn't match
+                if "title" not in info:
+                    title_patterns = [
+                        # Match "add task to X" but stop before temporal/priority/category words
+                        r'(?:add|create|new)\s+(?:task|kaam)\s+(?:to|for)?\s*(.+?)(?:\s+(?:tomorrow|today|next week|yesterday|with|in|for|by|on|at|high|medium|low|personal|work|shopping)|\s*$)',
+                        r'task\s+(?:add|banao)\s+(?:karo?)?\s*[:-]?\s*(.+?)(?:\s+(?:tomorrow|today|next week|yesterday|with|in|for|by|on|at|high|medium|low|personal|work|shopping)|\s*$)',
+                    ]
+                    for pattern in title_patterns:
+                        match = re.search(pattern, message, re.IGNORECASE)
+                        if match:
+                            title = match.group(1).strip()
+                            # Clean up common endings and extra words
+                            title = re.sub(r'\s+(please|plz|kar\s*do|kar\s*dein|tomorrow|today|with|in).*$', '', title, flags=re.IGNORECASE)
+                            title = title.strip()
+                            if title:
+                                info["title"] = title
+                                break
 
                 # If no pattern matched and we're in adding_task state, use the whole message as title
                 if "title" not in info and current_state and current_state.get("intent") == "adding_task":
                     # Clean the message - remove other field labels if present
                     cleaned = re.sub(r'(?:due\s+date|priority|category)\s*[:\-].*', '', message, flags=re.IGNORECASE)
+                    # Remove Urdu date/time words and common phrases
+                    cleaned = re.sub(r'(?:آج|کل|اگلے|ہفتے|پکانی|ہے|کرنا|کرنی|مجھے|میرا|میرے|ٹاسک|میں|ڈالو).*$', '', cleaned)
                     cleaned = cleaned.strip()
-                    if cleaned:
+                    if cleaned and len(cleaned) > 2:
                         info["title"] = cleaned
 
         # Extract priority - check structured format first
@@ -1043,22 +1141,37 @@ Be conversational and friendly. Keep questions short and clear."""
         if priority_structured:
             info["priority"] = priority_structured.group(1).lower()
         else:
-            priority_match = re.search(r'\b(high|medium|low)\b', message, re.IGNORECASE)
-            if priority_match:
-                info["priority"] = priority_match.group(1).lower()
+            # Check for English and Urdu priority terms
+            priority_patterns = [
+                (r'\b(high|medium|low)\b', {'high': 'high', 'medium': 'medium', 'low': 'low'}),
+                (r'(اعلیٰ|بلند|زیادہ)', {'اعلیٰ': 'high', 'بلند': 'high', 'زیادہ': 'high'}),
+                (r'(درمیانہ|عام)', {'درمیانہ': 'medium', 'عام': 'medium'}),
+                (r'(کم|نیچے)', {'کم': 'low', 'نیچے': 'low'}),
+            ]
+            for pattern, mapping in priority_patterns:
+                match = re.search(pattern, message, re.IGNORECASE)
+                if match:
+                    matched_text = match.group(1).lower()
+                    info["priority"] = mapping.get(matched_text, matched_text)
+                    break
 
         # Extract category - check structured format first
         category_structured = re.search(r'category\s*[:\-]\s*(\w+)', message, re.IGNORECASE)
         if category_structured:
             info["category"] = category_structured.group(1).lower()
         else:
+            # Check for English and Urdu category terms
             category_patterns = [
-                r'\b(personal|work|shopping)\b',
+                (r'\b(personal|work|shopping)\b', {'personal': 'personal', 'work': 'work', 'shopping': 'shopping'}),
+                (r'(ذاتی|پرسنل)', {'ذاتی': 'personal', 'پرسنل': 'personal'}),
+                (r'(کام|ورک|دفتر)', {'کام': 'work', 'ورک': 'work', 'دفتر': 'work'}),
+                (r'(خریداری|شاپنگ|بازار)', {'خریداری': 'shopping', 'شاپنگ': 'shopping', 'بازار': 'shopping'}),
             ]
-            for pattern in category_patterns:
+            for pattern, mapping in category_patterns:
                 match = re.search(pattern, message, re.IGNORECASE)
                 if match:
-                    info["category"] = match.group(1).lower()
+                    matched_text = match.group(1).lower()
+                    info["category"] = mapping.get(matched_text, matched_text)
                     break
 
         # Extract due date - check structured format first
@@ -1077,7 +1190,7 @@ Be conversational and friendly. Keep questions short and clear."""
         return info
 
     def _parse_natural_date(self, text: str) -> Optional[str]:
-        """Parse natural language date expressions.
+        """Parse natural language date expressions in English and Urdu.
 
         Args:
             text: Text containing date expression
@@ -1088,21 +1201,21 @@ Be conversational and friendly. Keep questions short and clear."""
         text_lower = text.lower()
         today = datetime.now()
 
-        # Tomorrow
-        if re.search(r'\btomorrow\b|\bkal\b', text_lower):
+        # Today - English and Urdu
+        if re.search(r'\btoday\b|\bآج\b|\baaj\b', text_lower):
+            return today.isoformat()
+
+        # Tomorrow - English and Urdu
+        if re.search(r'\btomorrow\b|\bکل\b|\bkal\b', text_lower):
             date = today + timedelta(days=1)
             return date.isoformat()
 
-        # Next week
-        if re.search(r'\bnext\s+week\b|\bagle\s+hafte\b', text_lower):
+        # Next week - English and Urdu
+        if re.search(r'\bnext\s+week\b|\bاگلے\s+ہفتے\b|\bagle\s+hafte\b', text_lower):
             date = today + timedelta(days=7)
             return date.isoformat()
 
-        # Today
-        if re.search(r'\btoday\b|\baaj\b', text_lower):
-            return today.isoformat()
-
-        # Specific weekdays (next occurrence)
+        # Specific weekdays (next occurrence) - English and Romanized Urdu
         weekdays = {
             'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3,
             'friday': 4, 'saturday': 5, 'sunday': 6,
@@ -1112,6 +1225,20 @@ Be conversational and friendly. Keep questions short and clear."""
 
         for day_name, day_num in weekdays.items():
             if day_name in text_lower:
+                days_ahead = day_num - today.weekday()
+                if days_ahead <= 0:
+                    days_ahead += 7
+                date = today + timedelta(days=days_ahead)
+                return date.isoformat()
+
+        # Urdu weekdays (script)
+        urdu_weekdays = {
+            'پیر': 0, 'منگل': 1, 'بدھ': 2, 'جمعرات': 3,
+            'جمعہ': 4, 'ہفتہ': 5, 'اتوار': 6
+        }
+
+        for day_name, day_num in urdu_weekdays.items():
+            if day_name in text:
                 days_ahead = day_num - today.weekday()
                 if days_ahead <= 0:
                     days_ahead += 7

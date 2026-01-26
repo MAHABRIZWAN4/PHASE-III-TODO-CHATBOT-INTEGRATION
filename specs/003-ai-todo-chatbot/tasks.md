@@ -160,12 +160,12 @@
 
 ### Implementation for User Story 3
 
-- [ ] T055 [US3] Enhance language detection to support Urdu Unicode range in backend/app/utils/language.py
-- [ ] T056 [US3] Add Urdu system prompts to ChatService in backend/app/services/chat_service.py
-- [ ] T057 [US3] Implement language-aware response formatting in backend/app/services/chat_service.py
-- [ ] T058 [US3] Add language metadata to Message model in backend/app/models/message.py
-- [ ] T059 [P] [US3] Add Urdu font support to Tailwind config in frontend/tailwind.config.js
-- [ ] T060 [P] [US3] Update MessageBubble to handle RTL text in frontend/components/chat/MessageBubble.tsx
+- [X] T055 [US3] Enhance language detection to support Urdu Unicode range in backend/app/utils/language.py
+- [X] T056 [US3] Add Urdu system prompts to ChatService in backend/app/services/chat_service.py
+- [X] T057 [US3] Implement language-aware response formatting in backend/app/services/chat_service.py
+- [X] T058 [US3] Add language metadata to Message model in backend/app/models/message.py
+- [X] T059 [P] [US3] Add Urdu font support to Tailwind config in frontend/tailwind.config.js
+- [X] T060 [P] [US3] Update MessageBubble to handle RTL text in frontend/components/chat/MessageBubble.tsx
 - [ ] T061 [P] [US3] Frontend test for Urdu text display in frontend/tests/components/MessageBubble.test.tsx
 
 **Checkpoint**: All user stories 1, 2, and 3 should work - full multilingual chat

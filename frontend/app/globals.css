@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -10,6 +11,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-urdu: 'Noto Nastaliq Urdu', 'Noto Sans Arabic', serif;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -23,4 +25,24 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Urdu text styling */
+.urdu-text {
+  font-family: var(--font-urdu);
+  direction: rtl;
+  text-align: right;
+  line-height: 1.8;
+  letter-spacing: 0.02em;
+}
+
+/* RTL support for Urdu messages */
+[dir="rtl"] {
+  direction: rtl;
+  text-align: right;
+}
+
+[dir="ltr"] {
+  direction: ltr;
+  text-align: left;
 }
