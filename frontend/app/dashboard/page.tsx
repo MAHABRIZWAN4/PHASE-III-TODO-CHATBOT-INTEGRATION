@@ -52,11 +52,15 @@ export default function DashboardPage() {
 
   useEffect(() => {
     // Get user from localStorage on client side only
+    console.log('[Dashboard] Checking auth...');
     const authUser = getAuthUser();
+    console.log('[Dashboard] Auth user:', authUser ? 'Found' : 'Not found');
     setUser(authUser);
 
     if (!authUser) {
+      console.log('[Dashboard] No user, redirecting to login...');
       router.replace("/login");
+      return;
     }
 
     // Check for dark mode preference
@@ -72,7 +76,9 @@ export default function DashboardPage() {
     const fetchStats = async () => {
       try {
         setLoadingStats(true);
+        console.log('[Dashboard] Fetching tasks...');
         const tasks = await getTasks();
+        console.log('[Dashboard] Tasks fetched:', tasks.length);
 
         const now = new Date();
         const total = tasks.length;
@@ -88,8 +94,12 @@ export default function DashboardPage() {
 
         setOverdueTasks(overdueTasksList);
         setStats({ total, completed, pending, overdue: overdueTasksList.length });
+        console.log('[Dashboard] Stats updated:', { total, completed, pending, overdue: overdueTasksList.length });
       } catch (error) {
-        console.error("Failed to fetch task stats:", error);
+        console.error("[Dashboard] Failed to fetch task stats:", error);
+        // Set default stats on error so page doesn't hang
+        setStats({ total: 0, completed: 0, pending: 0, overdue: 0 });
+        setOverdueTasks([]);
       } finally {
         setLoadingStats(false);
       }
