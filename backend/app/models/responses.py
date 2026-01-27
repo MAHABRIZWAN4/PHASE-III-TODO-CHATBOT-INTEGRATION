@@ -77,7 +77,7 @@ class ChatResponse(BaseModel):
                 }
             ],
             "language": "english",
-            "model": "xiaomi/mimo-v2-flash:free"
+            "model": "mistralai/devstral-2512:free"
         }
     )
 

@@ -5,15 +5,18 @@ import React, { createContext, useContext, useState, useCallback } from 'react';
 interface TaskUpdateContextType {
   triggerTaskRefresh: () => void;
   onTaskRefresh: (callback: () => void) => () => void;
+  refreshTrigger: number;
 }
 
 const TaskUpdateContext = createContext<TaskUpdateContextType | undefined>(undefined);
 
 export function TaskUpdateProvider({ children }: { children: React.ReactNode }) {
   const [refreshCallbacks, setRefreshCallbacks] = useState<Set<() => void>>(new Set());
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const triggerTaskRefresh = useCallback(() => {
     console.log('[TaskUpdateContext] triggerTaskRefresh called, callbacks:', refreshCallbacks.size);
+    setRefreshTrigger(prev => prev + 1);
     refreshCallbacks.forEach(callback => {
       try {
         callback();
@@ -41,7 +44,7 @@ export function TaskUpdateProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   return (
-    <TaskUpdateContext.Provider value={{ triggerTaskRefresh, onTaskRefresh }}>
+    <TaskUpdateContext.Provider value={{ triggerTaskRefresh, onTaskRefresh, refreshTrigger }}>
       {children}
     </TaskUpdateContext.Provider>
   );

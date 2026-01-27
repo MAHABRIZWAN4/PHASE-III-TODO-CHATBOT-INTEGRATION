@@ -63,7 +63,7 @@ class ChatService:
             )
 
         base_url = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
-        self.model = os.getenv("OPENROUTER_MODEL", "xiaomi/mimo-v2-flash:free")
+        self.model = os.getenv("OPENROUTER_MODEL", "mistralai/devstral-2512:free")
 
         # Initialize OpenAI client with OpenRouter configuration
         self.openai_client = AsyncOpenAI(

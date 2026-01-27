@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -7,24 +7,248 @@
 }
 
 @theme inline {
+  /* Colors - Primary (Blue Gradient) */
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
+  --color-primary-300: #93c5fd;
+  --color-primary-400: #60a5fa;
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  --color-primary-800: #1e40af;
+  --color-primary-900: #1e3a8a;
+
+  /* Colors - Secondary (Purple) */
+  --color-secondary-50: #faf5ff;
+  --color-secondary-100: #f3e8ff;
+  --color-secondary-200: #e9d5ff;
+  --color-secondary-300: #d8b4fe;
+  --color-secondary-400: #c084fc;
+  --color-secondary-500: #a855f7;
+  --color-secondary-600: #9333ea;
+  --color-secondary-700: #7e22ce;
+  --color-secondary-800: #6b21a8;
+  --color-secondary-900: #581c87;
+
+  /* Colors - Neutral (Grays) */
+  --color-neutral-50: #f9fafb;
+  --color-neutral-100: #f3f4f6;
+  --color-neutral-200: #e5e7eb;
+  --color-neutral-300: #d1d5db;
+  --color-neutral-400: #9ca3af;
+  --color-neutral-500: #6b7280;
+  --color-neutral-600: #4b5563;
+  --color-neutral-700: #374151;
+  --color-neutral-800: #1f2937;
+  --color-neutral-900: #111827;
+
+  /* Colors - Semantic */
+  --color-success-light: #d1fae5;
+  --color-success: #10b981;
+  --color-success-dark: #065f46;
+
+  --color-error-light: #fee2e2;
+  --color-error: #ef4444;
+  --color-error-dark: #991b1b;
+
+  --color-warning-light: #fef3c7;
+  --color-warning: #f59e0b;
+  --color-warning-dark: #92400e;
+
+  --color-info-light: #dbeafe;
+  --color-info: #3b82f6;
+  --color-info-dark: #1e40af;
+
+  /* Legacy colors */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  /* Typography */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace;
   --font-urdu: 'Noto Nastaliq Urdu', 'Noto Sans Arabic', serif;
+
+  /* Animations */
+  --animate-spin: spin 1s linear infinite;
+  --animate-pulse: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-bounce: bounce 1s infinite;
+  --animate-slide-in-right: slideInRight 0.3s ease-out;
+  --animate-slide-down: slideDown 0.2s ease-out;
+  --animate-fade-in: fadeIn 0.2s ease-in;
+  --animate-scale-in: scaleIn 0.2s ease-out;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0f172a;
+    --foreground: #f1f5f9;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+}
+
+/* Keyframe Animations */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Utility Classes - Buttons */
+.btn-primary {
+  @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg;
+  @apply bg-primary-500 hover:bg-primary-600 active:bg-primary-700;
+  @apply text-white font-medium;
+  @apply transition-all duration-200;
+  @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply shadow-sm hover:shadow-md;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg;
+  @apply bg-neutral-100 hover:bg-neutral-200 active:bg-neutral-300;
+  @apply text-neutral-900 font-medium;
+  @apply transition-all duration-200;
+  @apply focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-offset-2;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-ghost {
+  @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg;
+  @apply text-neutral-700 hover:bg-neutral-100 active:bg-neutral-200;
+  @apply font-medium transition-all duration-200;
+  @apply focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-offset-2;
+}
+
+.btn-lg {
+  @apply px-6 py-3 text-base;
+}
+
+.btn-sm {
+  @apply px-3 py-1.5 text-sm;
+}
+
+/* Utility Classes - Inputs */
+.input-field {
+  @apply w-full px-4 py-2 rounded-lg;
+  @apply border border-neutral-300 focus:border-primary-500;
+  @apply bg-white text-neutral-900 placeholder-neutral-400;
+  @apply transition-colors duration-200;
+  @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1;
+  @apply disabled:bg-neutral-100 disabled:cursor-not-allowed;
+}
+
+.form-label {
+  @apply block text-sm font-medium text-neutral-700 mb-1;
+}
+
+.form-error {
+  @apply text-sm text-error mt-1;
+}
+
+.form-group {
+  @apply space-y-1;
+}
+
+/* Utility Classes - Cards */
+.card {
+  @apply bg-white rounded-lg shadow-sm border border-neutral-200;
+  @apply transition-shadow duration-200;
+}
+
+.card-elevated {
+  @apply bg-white rounded-xl shadow-lg;
+  @apply transition-all duration-200;
+  @apply hover:shadow-xl hover:-translate-y-1;
+}
+
+/* Utility Classes - Alerts */
+.alert-error {
+  @apply bg-error-light border-l-4 border-error;
+  @apply text-error-dark px-4 py-3 rounded-r-lg;
+  @apply flex items-start gap-3;
+}
+
+.alert-success {
+  @apply bg-success-light border-l-4 border-success;
+  @apply text-success-dark px-4 py-3 rounded-r-lg;
+  @apply flex items-start gap-3;
+}
+
+.alert-warning {
+  @apply bg-warning-light border-l-4 border-warning;
+  @apply text-warning-dark px-4 py-3 rounded-r-lg;
+  @apply flex items-start gap-3;
+}
+
+.alert-info {
+  @apply bg-info-light border-l-4 border-info;
+  @apply text-info-dark px-4 py-3 rounded-r-lg;
+  @apply flex items-start gap-3;
+}
+
+/* Utility Classes - Checkbox */
+.checkbox {
+  @apply w-5 h-5 rounded;
+  @apply border-2 border-neutral-300 checked:border-primary-500;
+  @apply text-primary-500 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
+  @apply cursor-pointer transition-colors duration-200;
+}
+
+/* Utility Classes - Text Gradient */
+.text-gradient {
+  @apply bg-gradient-to-r from-primary-600 to-secondary-600;
+  @apply bg-clip-text text-transparent;
 }
 
 /* Urdu text styling */
