@@ -65,9 +65,20 @@ export default function LoginPage() {
         throw new Error(data.detail || 'Login failed. Please check your credentials.');
       }
 
+      console.log('[Login] API Response:', data);
+      console.log('[Login] Token:', data.token);
+      console.log('[Login] User:', data.user);
+
       // Store token and user data
       setAuthToken(data.token);
       setAuthUser(data.user);
+
+      console.log('[Login] Stored in localStorage');
+      console.log('[Login] Token check:', localStorage.getItem('auth_token'));
+      console.log('[Login] User check:', localStorage.getItem('auth_user'));
+
+      // Small delay to ensure localStorage is written
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       // Redirect to dashboard
       window.location.href = '/dashboard';
