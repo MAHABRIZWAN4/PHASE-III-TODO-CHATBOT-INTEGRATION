@@ -79,22 +79,27 @@ export default function ChatInterface({
       // Check if any task operation was successful and trigger refresh
       if (response.metadata?.tool_calls) {
         console.log('[ChatInterface] Tool calls received:', response.metadata.tool_calls);
+        console.log('[ChatInterface] Full response metadata:', response.metadata);
+
         const taskModified = response.metadata.tool_calls.some(
-          (call) =>
+          (call: any) =>
             (call.tool === "add_task" ||
              call.tool === "complete_task" ||
              call.tool === "delete_task" ||
              call.tool === "update_task") &&
-            call.success
+            call.success === true
         );
         console.log('[ChatInterface] Task modified:', taskModified);
+
         if (taskModified) {
           // Trigger task refresh to update dashboard
           console.log('[ChatInterface] Triggering task refresh...');
           triggerTaskRefresh();
+          console.log('[ChatInterface] Task refresh triggered!');
         }
       } else {
         console.log('[ChatInterface] No metadata or tool_calls in response');
+        console.log('[ChatInterface] Full response:', response);
       }
 
       // Replace temp user message and add assistant message

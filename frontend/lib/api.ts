@@ -122,3 +122,24 @@ export async function toggleTaskComplete(id: number): Promise<Task> {
 
   return handleResponse<Task>(response);
 }
+
+// User profile endpoints
+export async function updateProfile(data: { name?: string; email?: string }): Promise<{ id: string; email: string; name?: string; created_at: string }> {
+  const response = await fetch(`${API_URL}/api/auth/profile`, {
+    method: "PUT",
+    headers: getHeaders(),
+    body: JSON.stringify(data),
+  });
+
+  return handleResponse(response);
+}
+
+export async function changePassword(data: { current_password: string; new_password: string }): Promise<{ message: string }> {
+  const response = await fetch(`${API_URL}/api/auth/change-password`, {
+    method: "POST",
+    headers: getHeaders(),
+    body: JSON.stringify(data),
+  });
+
+  return handleResponse(response);
+}

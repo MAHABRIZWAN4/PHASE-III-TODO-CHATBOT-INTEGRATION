@@ -48,28 +48,65 @@ class ChatService:
     """
 
     def __init__(self):
-        """Initialize ChatService with OpenRouter client.
+        """Initialize ChatService with OpenRouter, OpenAI, or Groq client.
+
+        Supports OpenRouter, OpenAI, and Groq (FREE) API.
+        Set AI_PROVIDER env variable to 'openrouter', 'openai', or 'groq'.
 
         Raises:
-            ValueError: If OPENROUTER_API_KEY is not set in environment
+            ValueError: If API key is not set in environment
 
-        Reference: T024 - Initialize OpenRouter client with API key from env
+        Reference: T024 - Initialize AI client with API key from env
         """
-        api_key = os.getenv("OPENROUTER_API_KEY")
-        if not api_key:
-            raise ValueError(
-                "OPENROUTER_API_KEY environment variable is not set. "
-                "Please set it in your .env file."
+        # Check which AI provider to use
+        provider = os.getenv("AI_PROVIDER", "groq").lower()
+
+        if provider == "groq":
+            # Groq API (FREE and FAST!)
+            api_key = os.getenv("GROQ_API_KEY")
+            if not api_key:
+                raise ValueError(
+                    "GROQ_API_KEY environment variable is not set. "
+                    "Get free API key from: https://console.groq.com/"
+                )
+
+            self.model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+            self.openai_client = AsyncOpenAI(
+                api_key=api_key,
+                base_url="https://api.groq.com/openai/v1"
             )
+            print(f"[ChatService] Using Groq API (FREE) with model: {self.model}")
 
-        base_url = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
-        self.model = os.getenv("OPENROUTER_MODEL", "mistralai/devstral-2512:free")
+        elif provider == "openai":
+            # Direct OpenAI API
+            api_key = os.getenv("OPENAI_API_KEY")
+            if not api_key:
+                raise ValueError(
+                    "OPENAI_API_KEY environment variable is not set. "
+                    "Please set it in your .env file or switch to Groq (free)."
+                )
 
-        # Initialize OpenAI client with OpenRouter configuration
-        self.openai_client = AsyncOpenAI(
-            api_key=api_key,
-            base_url=base_url,
-        )
+            self.model = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
+            self.openai_client = AsyncOpenAI(api_key=api_key)
+            print(f"[ChatService] Using OpenAI API with model: {self.model}")
+
+        else:
+            # OpenRouter API (default)
+            api_key = os.getenv("OPENROUTER_API_KEY")
+            if not api_key:
+                raise ValueError(
+                    "OPENROUTER_API_KEY environment variable is not set. "
+                    "Please set it in your .env file or switch to Groq (free)."
+                )
+
+            base_url = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+            self.model = os.getenv("OPENROUTER_MODEL", "google/gemini-flash-1.5-8b")
+
+            self.openai_client = AsyncOpenAI(
+                api_key=api_key,
+                base_url=base_url,
+            )
+            print(f"[ChatService] Using OpenRouter with model: {self.model}")
 
         # Configuration
         self.max_tokens = 1000
@@ -332,12 +369,19 @@ class ChatService:
         if language == "urdu":
             return """You are a helpful task management assistant. You help users manage their todo tasks through natural conversation in Urdu.
 
+IMPORTANT: When you see "Tool execution results:" in the conversation, you MUST use that information to answer the user's question. The tool results contain the actual data from the database.
+
 You can help users:
 - Add new tasks (with priority: High/Medium/Low and category: Personal/Work/Shopping)
 - List their tasks
 - Mark tasks as completed
 - Delete tasks
 - Update task details
+
+When tool results show tasks, present them in a friendly way:
+- If tasks are found, list them clearly with their details
+- If no tasks are found, say "Aapke paas abhi koi task nahi hai"
+- Always use the actual data from tool results, never make up information
 
 When adding a task, ask for missing information step by step:
 1. Task title (required)
@@ -350,12 +394,19 @@ Always respond in Urdu when the user speaks Urdu."""
         else:
             return """You are a helpful task management assistant. You help users manage their todo tasks through natural conversation.
 
+IMPORTANT: When you see "Tool execution results:" in the conversation, you MUST use that information to answer the user's question. The tool results contain the actual data from the database.
+
 You can help users:
 - Add new tasks (with priority: High/Medium/Low and category: Personal/Work/Shopping)
 - List their tasks
 - Mark tasks as completed
 - Delete tasks
 - Update task details
+
+When tool results show tasks, present them in a friendly way:
+- If tasks are found, list them clearly with their details (title, priority, category, completion status)
+- If no tasks are found, say "You don't have any tasks yet"
+- Always use the actual data from tool results, never make up information
 
 When adding a task, ask for missing information step by step:
 1. Task title (required)
@@ -809,15 +860,27 @@ Be conversational and friendly. Keep questions short and clear."""
         if not number:
             # Try multiple patterns for title extraction
             title_patterns = [
-                r'(?:complete|delete|mark|finish)\s+(?:the\s+)?([a-zA-Z][a-zA-Z0-9\s]+?)\s+(?:task|as)',  # "complete jjs task"
-                r'(?:complete|delete|mark|finish)\s+([a-zA-Z][a-zA-Z0-9\s]+)$',  # "complete jjs"
+                # Pattern 1: "task [title] [action]" - e.g., "task Buy Vegetable mark as completed"
+                r'\btask\b\s+([a-zA-Z][a-zA-Z0-9\s]+?)\s+(?:mark|complete|delete|finish|is)',
+
+                # Pattern 2: "[action] task [title]" - e.g., "complete task Buy Vegetable"
+                r'(?:complete|delete|mark|finish)\s+(?:task\s+)?(?:the\s+)?([a-zA-Z][a-zA-Z0-9\s]+?)\s+(?:task|as)',
+
+                # Pattern 3: "[action] [title]" at end - e.g., "complete Buy Vegetable"
+                r'(?:complete|delete|mark|finish)\s+(?:the\s+)?([a-zA-Z][a-zA-Z0-9\s]+)$',
+
+                # Pattern 4: "check task [title]" - e.g., "check task Buy Vegetable"
+                r'\bcheck\b\s+(?:task\s+)?([a-zA-Z][a-zA-Z0-9\s]+?)\s+(?:mark|complete|delete|finish)',
             ]
 
             for pattern in title_patterns:
                 title_match = re.search(pattern, user_message, re.IGNORECASE)
                 if title_match:
                     title = title_match.group(1).strip()
-                    break
+                    # Clean up common words that might be captured
+                    title = re.sub(r'\s+(mark|complete|delete|finish|as|is|the)$', '', title, flags=re.IGNORECASE).strip()
+                    if title and len(title) > 1:  # Ensure we have a meaningful title
+                        break
 
         print(f"[DEBUG] Extracted - number: {number}, title: '{title}'")
 
@@ -928,7 +991,15 @@ Be conversational and friendly. Keep questions short and clear."""
 
         # Check delete patterns FIRST (before list patterns to avoid conflicts)
         delete_patterns = [
-            # English patterns
+            # English patterns - with task numbers
+            r'\bdelete\b.*\btask\b.*\d+',  # "delete task 1"
+            r'\bdelete\b.*\d+',  # "delete 1"
+            r'\bremove\b.*\btask\b.*\d+',  # "remove task 1"
+            r'\bremove\b.*\d+',  # "remove 1"
+            r'\btask\b.*\d+.*\bdelete\b',  # "task 1 delete"
+            r'\btask\b.*\d+.*\bremove\b',  # "task 1 remove"
+
+            # English patterns - general
             r'\bdelete\b.*\btask\b',
             r'\bremove\b.*\btask\b',
             r'\btask\b.*\bdelete\b',
@@ -957,7 +1028,14 @@ Be conversational and friendly. Keep questions short and clear."""
 
         # Check complete patterns SECOND (before list patterns)
         complete_patterns = [
-            # English patterns
+            # English patterns - with task numbers
+            r'\bcomplete\b.*\btask\b.*\d+',  # "complete task 1"
+            r'\bcomplete\b.*\d+',  # "complete 1"
+            r'\bmark\b.*\d+.*\b(?:done|completed|complete)\b',  # "mark 1 as done"
+            r'\btask\b.*\d+.*\b(?:done|completed|complete)\b',  # "task 1 done"
+            r'\d+.*\b(?:done|completed|complete)\b',  # "1 is done"
+
+            # English patterns - general
             r'\bcomplete\b.*\btask\b',
             r'\bmark\b.*\b(?:done|completed)\b',
             r'\bmark\b.*\btask\b.*\b(?:done|completed|complete)\b',

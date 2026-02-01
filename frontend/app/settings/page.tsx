@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { getAuthUser, logout, type AuthUser } from "@/lib/auth";
+import { getAuthUser, logout, type AuthUser, setAuthUser } from "@/lib/auth";
+import { updateProfile, changePassword } from "@/lib/api";
 import {
   Brain,
   ArrowLeft,
@@ -15,7 +16,9 @@ import {
   Shield,
   Trash2,
   Save,
-  LogOut
+  LogOut,
+  X,
+  Check
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
@@ -31,12 +34,33 @@ export default function SettingsPage() {
   const [language, setLanguage] = useState("en");
   const [saving, setSaving] = useState(false);
 
+  // Profile edit state
+  const [showProfileEdit, setShowProfileEdit] = useState(false);
+  const [profileName, setProfileName] = useState("");
+  const [profileEmail, setProfileEmail] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState("");
+  const [profileSuccess, setProfileSuccess] = useState(false);
+
+  // Password change state
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+
   useEffect(() => {
     const authUser = getAuthUser();
     setUser(authUser);
 
     if (!authUser) {
       router.replace("/login");
+    } else {
+      // Initialize profile form with current user data
+      setProfileName(authUser.name || "");
+      setProfileEmail(authUser.email);
     }
 
     // Load preferences
@@ -76,6 +100,95 @@ export default function SettingsPage() {
 
   const handleLogout = () => {
     logout();
+  };
+
+  const handleProfileUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileError("");
+    setProfileSuccess(false);
+    setProfileSaving(true);
+
+    try {
+      const updateData: { name?: string; email?: string } = {};
+
+      if (profileName !== user?.name) {
+        updateData.name = profileName;
+      }
+
+      if (profileEmail !== user?.email) {
+        updateData.email = profileEmail;
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        setProfileError("No changes to save");
+        setProfileSaving(false);
+        return;
+      }
+
+      const updatedUser = await updateProfile(updateData);
+
+      // Update local auth user
+      if (user) {
+        const newUser = { ...user, name: updatedUser.name, email: updatedUser.email };
+        setAuthUser(newUser);
+        setUser(newUser);
+      }
+
+      setProfileSuccess(true);
+      setTimeout(() => {
+        setShowProfileEdit(false);
+        setProfileSuccess(false);
+      }, 2000);
+    } catch (error) {
+      setProfileError(error instanceof Error ? error.message : "Failed to update profile");
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError("");
+    setPasswordSuccess(false);
+
+    // Validation
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPasswordError("All fields are required");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setPasswordError("New password must be at least 8 characters");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New passwords do not match");
+      return;
+    }
+
+    setPasswordSaving(true);
+
+    try {
+      await changePassword({
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+
+      setPasswordSuccess(true);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+
+      setTimeout(() => {
+        setShowPasswordChange(false);
+        setPasswordSuccess(false);
+      }, 2000);
+    } catch (error) {
+      setPasswordError(error instanceof Error ? error.message : "Failed to change password");
+    } finally {
+      setPasswordSaving(false);
+    }
   };
 
   if (!user) {
@@ -137,11 +250,88 @@ export default function SettingsPage() {
                   </p>
                 </div>
               </div>
-              <div className="pt-4 border-t border-neutral-200 dark:border-neutral-700">
-                <Button variant="secondary" size="sm">
-                  Edit Profile
-                </Button>
-              </div>
+
+              {!showProfileEdit ? (
+                <div className="pt-4 border-t border-neutral-200 dark:border-neutral-700">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setShowProfileEdit(true)}
+                  >
+                    Edit Profile
+                  </Button>
+                </div>
+              ) : (
+                <form onSubmit={handleProfileUpdate} className="pt-4 border-t border-neutral-200 dark:border-neutral-700 space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                      Name
+                    </label>
+                    <input
+                      type="text"
+                      value={profileName}
+                      onChange={(e) => setProfileName(e.target.value)}
+                      className="w-full px-4 py-2 bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      placeholder="Your name"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      value={profileEmail}
+                      onChange={(e) => setProfileEmail(e.target.value)}
+                      className="w-full px-4 py-2 bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      placeholder="your@email.com"
+                      required
+                    />
+                  </div>
+
+                  {profileError && (
+                    <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-600 dark:text-red-400">
+                      {profileError}
+                    </div>
+                  )}
+
+                  {profileSuccess && (
+                    <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-sm text-green-600 dark:text-green-400 flex items-center gap-2">
+                      <Check className="w-4 h-4" />
+                      Profile updated successfully!
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      size="sm"
+                      loading={profileSaving}
+                      disabled={profileSaving}
+                    >
+                      <Save className="w-4 h-4" />
+                      {profileSaving ? "Saving..." : "Save Changes"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        setShowProfileEdit(false);
+                        setProfileError("");
+                        setProfileName(user?.name || "");
+                        setProfileEmail(user?.email || "");
+                      }}
+                      disabled={profileSaving}
+                    >
+                      <X className="w-4 h-4" />
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              )}
             </CardContent>
           </Card>
 
@@ -273,15 +463,110 @@ export default function SettingsPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Button variant="secondary" size="sm">
-                Change Password
-              </Button>
-              <div className="pt-4 border-t border-neutral-200 dark:border-neutral-700">
-                <Button variant="danger" size="sm">
-                  <Trash2 className="w-4 h-4" />
-                  Delete Account
-                </Button>
-              </div>
+              {!showPasswordChange ? (
+                <>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setShowPasswordChange(true)}
+                  >
+                    Change Password
+                  </Button>
+                  <div className="pt-4 border-t border-neutral-200 dark:border-neutral-700">
+                    <Button variant="danger" size="sm">
+                      <Trash2 className="w-4 h-4" />
+                      Delete Account
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <form onSubmit={handlePasswordChange} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                      Current Password
+                    </label>
+                    <input
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      className="w-full px-4 py-2 bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      placeholder="Enter current password"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                      New Password
+                    </label>
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="w-full px-4 py-2 bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      placeholder="Enter new password (min 8 characters)"
+                      required
+                      minLength={8}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                      Confirm New Password
+                    </label>
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="w-full px-4 py-2 bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      placeholder="Confirm new password"
+                      required
+                    />
+                  </div>
+
+                  {passwordError && (
+                    <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-600 dark:text-red-400">
+                      {passwordError}
+                    </div>
+                  )}
+
+                  {passwordSuccess && (
+                    <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-sm text-green-600 dark:text-green-400 flex items-center gap-2">
+                      <Check className="w-4 h-4" />
+                      Password changed successfully!
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      size="sm"
+                      loading={passwordSaving}
+                      disabled={passwordSaving}
+                    >
+                      <Save className="w-4 h-4" />
+                      {passwordSaving ? "Changing..." : "Change Password"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        setShowPasswordChange(false);
+                        setPasswordError("");
+                        setCurrentPassword("");
+                        setNewPassword("");
+                        setConfirmPassword("");
+                      }}
+                      disabled={passwordSaving}
+                    >
+                      <X className="w-4 h-4" />
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              )}
             </CardContent>
           </Card>
 
