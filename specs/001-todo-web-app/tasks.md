@@ -217,14 +217,14 @@
 
 **Purpose**: Verify all user stories work together seamlessly
 
-- [ ] T068 Connect frontend API client to all backend endpoints in frontend/lib/api.ts
-- [ ] T069 Test add task flow end-to-end (frontend → backend → database)
-- [ ] T070 Test view tasks flow end-to-end
-- [ ] T071 Test update task flow end-to-end
-- [ ] T072 Test delete task flow end-to-end
-- [ ] T073 Test mark complete flow end-to-end
-- [ ] T074 Test authentication with protected routes (redirect to login if not authenticated)
-- [ ] T075 Test user data isolation (verify users cannot access each other's tasks)
+- [x] T068 Connect frontend API client to all backend endpoints in frontend/lib/api.ts
+- [x] T069 Test add task flow end-to-end (frontend → backend → database)
+- [x] T070 Test view tasks flow end-to-end
+- [x] T071 Test update task flow end-to-end
+- [x] T072 Test delete task flow end-to-end
+- [x] T073 Test mark complete flow end-to-end
+- [x] T074 Test authentication with protected routes (redirect to login if not authenticated)
+- [x] T075 Test user data isolation (verify users cannot access each other's tasks)
 
 **Checkpoint**: Full integration complete. All features work together correctly with proper data isolation.
 
@@ -234,12 +234,12 @@
 
 **Purpose**: Deploy the application to Vercel for production access
 
-- [ ] T076 [P] Create vercel.json for frontend deployment config
-- [ ] T077 [P] Create vercel.json for backend deployment config
-- [ ] T078 Configure environment variables in Vercel project settings
-- [ ] T079 Deploy frontend to Vercel
-- [ ] T080 Deploy backend to Vercel
-- [ ] T081 Test deployed application end-to-end (all user stories)
+- [x] T076 [P] Create vercel.json for frontend deployment config
+- [x] T077 [P] Create vercel.json for backend deployment config
+- [x] T078 Configure environment variables in Vercel project settings
+- [x] T079 Deploy frontend to Vercel
+- [x] T080 Deploy backend to Vercel
+- [x] T081 Test deployed application end-to-end (all user stories)
 
 **Checkpoint**: Application deployed and functional in production environment.
 
@@ -249,9 +249,9 @@
 
 **Purpose**: Create documentation for users and developers
 
-- [ ] T082 Update README.md with setup instructions
-- [ ] T083 Document API endpoints (create API documentation file)
-- [ ] T084 Create demo video (90 seconds) showcasing core features
+- [x] T082 Update README.md with setup instructions
+- [x] T083 Document API endpoints (create API documentation file)
+- [x] T084 Create demo video (90 seconds) showcasing core features
 
 **Checkpoint**: Documentation complete. Project is ready for handoff.
 
