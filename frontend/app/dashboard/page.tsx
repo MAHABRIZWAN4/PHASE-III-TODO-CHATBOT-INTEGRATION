@@ -59,7 +59,14 @@ export default function DashboardPage() {
 
     if (!authUser) {
       console.log('[Dashboard] No user, redirecting to login...');
-      router.replace("/login");
+      console.log('[Dashboard] Current URL:', window.location.href);
+      console.log('[Dashboard] About to redirect to /login');
+
+      // Use setTimeout to ensure the redirect happens
+      setTimeout(() => {
+        console.log('[Dashboard] Executing redirect now...');
+        window.location.href = '/login';
+      }, 100);
       return;
     }
 
@@ -112,6 +119,7 @@ export default function DashboardPage() {
 
   const handleLogout = () => {
     logout();
+    setUser(null); // Clear user state to trigger redirect
   };
 
   const handleTaskAdded = () => {

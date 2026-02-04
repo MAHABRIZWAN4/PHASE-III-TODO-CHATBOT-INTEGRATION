@@ -40,7 +40,8 @@ export default function ChatPage() {
     setUser(authUser);
 
     if (!authUser) {
-      router.replace("/login");
+      window.location.href = '/login';
+      return;
     }
 
     // Check for dark mode preference
@@ -53,6 +54,7 @@ export default function ChatPage() {
 
   const handleLogout = () => {
     logout();
+    setUser(null); // Clear user state to trigger redirect
   };
 
   const handleConversationCreated = (newConversationId: string) => {

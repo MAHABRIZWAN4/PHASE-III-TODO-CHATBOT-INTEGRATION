@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { isAuthenticated } from "@/lib/auth";
 import {
   Brain,
@@ -234,8 +235,15 @@ export default function Home() {
             </div>
 
             <div className="relative">
-              <div className="aspect-square bg-gradient-to-br from-primary-100 to-secondary-100 dark:from-primary-900 dark:to-secondary-900 rounded-3xl flex items-center justify-center">
-                <Brain className="w-48 h-48 text-primary-600 dark:text-primary-400 opacity-20" />
+              <div className="aspect-square rounded-3xl overflow-hidden">
+                <Image
+                  src="/ai-workflow.png"
+                  alt="AI Workflow Illustration"
+                  width={600}
+                  height={600}
+                  className="w-full h-full object-cover"
+                  priority
+                />
               </div>
             </div>
           </div>

@@ -56,7 +56,8 @@ export default function SettingsPage() {
     setUser(authUser);
 
     if (!authUser) {
-      router.replace("/login");
+      window.location.href = '/login';
+      return;
     } else {
       // Initialize profile form with current user data
       setProfileName(authUser.name || "");
@@ -100,6 +101,7 @@ export default function SettingsPage() {
 
   const handleLogout = () => {
     logout();
+    setUser(null); // Clear user state to trigger redirect
   };
 
   const handleProfileUpdate = async (e: React.FormEvent) => {

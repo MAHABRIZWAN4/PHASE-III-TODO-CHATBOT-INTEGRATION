@@ -22,20 +22,29 @@ export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = getTokenFromCookie(request);
 
+  console.log('[Middleware] Request:', pathname);
+  console.log('[Middleware] Token exists:', !!token);
+
   // Check if the current route is protected
   const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
   const isPublicRoute = publicRoutes.includes(pathname);
 
+  console.log('[Middleware] Is protected route:', isProtectedRoute);
+  console.log('[Middleware] Is public route:', isPublicRoute);
+
   // Redirect to login if accessing protected route without token
   if (isProtectedRoute && !token) {
+    console.log('[Middleware] Redirecting to /login (no token for protected route)');
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
   // Redirect to dashboard if accessing public routes with valid token (but not root)
   if (isPublicRoute && token && pathname !== "/") {
+    console.log('[Middleware] Redirecting to /dashboard (has token on public route)');
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
+  console.log('[Middleware] Allowing request to proceed');
   return NextResponse.next();
 }
 
