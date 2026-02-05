@@ -1,17 +1,17 @@
 #!/bin/bash
-# Comprehensive Testing Script for Railway Backend
-# Usage: ./test-railway-backend.sh <RAILWAY_URL>
+# Comprehensive Testing Script for Render Backend
+# Usage: ./test-render-backend.sh <RENDER_URL>
 
 BACKEND_URL=$1
 
 if [ -z "$BACKEND_URL" ]; then
-    echo "Usage: ./test-railway-backend.sh <RAILWAY_URL>"
-    echo "Example: ./test-railway-backend.sh https://backend-production-xxxx.up.railway.app"
+    echo "Usage: ./test-render-backend.sh <RENDER_URL>"
+    echo "Example: ./test-render-backend.sh https://backend-production-xxxx.up.render.app"
     exit 1
 fi
 
 echo "╔════════════════════════════════════════════════════════════════╗"
-echo "║           TESTING RAILWAY BACKEND DEPLOYMENT                   ║"
+echo "║           TESTING RENDER BACKEND DEPLOYMENT                   ║"
 echo "╚════════════════════════════════════════════════════════════════╝"
 echo ""
 echo "Backend URL: $BACKEND_URL"
@@ -67,7 +67,7 @@ echo "5️⃣  Testing Create Task..."
 CREATE_TASK=$(curl -s -X POST "$BACKEND_URL/api/tasks" \
     -H "Authorization: Bearer $TOKEN" \
     -H "Content-Type: application/json" \
-    -d '{"title":"Test Task from Script","description":"Testing Railway deployment","completed":false}')
+    -d '{"title":"Test Task from Script","description":"Testing Render deployment","completed":false}')
 
 if echo "$CREATE_TASK" | grep -q "Test Task from Script"; then
     echo "   ✅ Task created successfully"

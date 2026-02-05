@@ -20,7 +20,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "https://*.vercel.app",
-        "https://*.railway.app",
+        "https://*.pythonanywhere.com",
         "https://frontend-kappa-ruddy-34.vercel.app"
     ],
     allow_credentials=True,
