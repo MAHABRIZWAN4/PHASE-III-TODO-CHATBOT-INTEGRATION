@@ -15,13 +15,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from routes.auth import router as auth_router
 from routes.tasks import router as tasks_router
 
-try:
-    from routes.chat import router as chat_router
-    CHAT_AVAILABLE = True
-except ImportError as e:
-    print(f"Chat router not available: {e}")
-    CHAT_AVAILABLE = False
-
 # Create FastAPI app
 app = FastAPI(
     title="Todo API",
@@ -44,9 +37,6 @@ app.add_middleware(
 # Include routers
 app.include_router(auth_router)
 app.include_router(tasks_router)
-
-if CHAT_AVAILABLE:
-    app.include_router(chat_router)
 
 @app.get("/")
 async def root():
